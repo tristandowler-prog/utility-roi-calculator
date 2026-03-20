@@ -6,16 +6,13 @@ st.set_page_config(page_title="SAR ROI Auditor", layout="wide")
 
 # --- DATA EXPORT FUNCTION ---
 def create_download_link(val1, val2, val3, df):
-    report_text = f"""
-    SAR TECHNOLOGY ROI REPORT
-    -------------------------
-    Manual Scouting Cost per Event: {val1}
-    SAR Subscription Cost per Event: {val2}
-    Net Annual Savings: {val3}
+    report_text = f"SAR TECHNOLOGY ROI REPORT\n"
+    report_text += f"-------------------------\n"
+    report_text += f"Manual Scouting Cost per Event: {val1}\n"
+    report_text += f"SAR Subscription Cost per Event: {val2}\n"
+    report_text += f"Net Annual Savings: {val3}\n\n"
+    report_text += f"DETAILED BREAKDOWN:\n{df.to_string()}"
     
-    DETAILED BREAKDOWN:
-    {df.to_string()}
-    """
     b64 = base64.b64encode(report_text.encode()).decode()
     return f'<a href="data:file/txt;base64,{b64}" download="SAR_ROI_Report.txt" style="text-decoration:none;">📩 Download ROI Summary Report</a>'
 
@@ -44,8 +41,6 @@ with st.sidebar:
 # --- THE PURE MATH ---
 # $150,000 / 10 = $15,000
 data_cost_per_event = annual_sub / events_per_year
-
-# Hourly Burn for the search team = (People * Rate) + (Cars * Rate)
 hourly_burn = (total_people * labor_rate) + (num_cars * car_rate)
 
 # --- SCENARIOS ---
@@ -64,33 +59,9 @@ with col_left:
 with col_right:
     st.subheader("🔵 SAR Satellite Truth")
     sar_total = data_cost_per_event
-    
     st.write("### SAR Cost Logic:")
     st.info(f"Subscription (${annual_sub:,.0f}) ÷ Events ({events_per_year}) = **${sar_total:,.0f} per event**")
     st.write("*(SAR replaces all manual field scouting and aerial recon costs)*")
 
-# --- DASHBOARD (AUDITED FOR SYNTAX) ---
-st.divider()
-m1, m2, m3 = st.columns(3)
-
-# Pre-formatting strings to keep function calls clean
-m_total_str = f"${manual_total:,.0f}"
-s_total_str = f"${sar_total:,.0f}"
-
-delta_val = manual_total - sar_total
-delta_str = f"-${delta_val:,.0f}"
-
-annual_net = (manual_total * events_per_year) - annual_sub
-annual_net_str = f"${annual_net:,.0f}"
-
-# Audited metric calls
-m1.metric("Manual Search Cost / Event", m_total_str)
-m2.metric("True SAR Cost / Event", s_total_str, delta=delta_str, delta_color="inverse")
-m3.metric("Net Annual Savings", annual_net_str)
-
-# --- THE BREAKDOWN TABLE ---
-st.subheader("Cost Comparison per Event")
-comparison_df = pd.DataFrame({
-    "Category": ["Field Search Labor", "Aerial Search (Helo/Drone)", "SAR Data Share"],
-    "Manual Search ($)": [f"${manual_labor:,.0f}", f"${manual_aerial:,.0f}", "$0"],
-    "SAR Strategy ($)": ["$0 (Replaced)", "$0 (Replaced
+# --- DASHBOARD (SYNTAX AUDITED) ---
+st.
