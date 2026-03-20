@@ -77,7 +77,8 @@ monthly_cost = sar_sub / 12
 cost_per_event = sar_sub / events_per_year
 
 # --- UI ---
-st.title("Flood Intelligence | Executive ROI Engine")
+st.title("Utility Flood ROI Model" )
+st.subheader("Cost-Benefit Analysis for Network Resilience")")
 
 c1, c2, c3, c4 = st.columns(4)
 
@@ -112,7 +113,7 @@ def generate_pdf():
     if uploaded_logo is not None:
         content.append(Image(uploaded_logo, width=120, height=60))
 
-    content.append(Paragraph("Flood Intelligence Business Case", styles['Title']))
+    content.append(Paragraph("Utility Flood ROI Model Business Case", styles['Title']))
     content.append(Spacer(1, 12))
 
     content.append(Paragraph(f"Prepared for: {customer_name}", styles['Normal']))
