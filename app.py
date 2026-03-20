@@ -64,4 +64,4 @@ with col_right:
     st.write("*(SAR replaces all manual field scouting and aerial recon costs)*")
 
 # --- DASHBOARD (SYNTAX AUDITED) ---
-st.
+
