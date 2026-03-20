@@ -9,7 +9,7 @@ st.divider()
 
 # --- SIDEBAR: COSTS ---
 with st.sidebar:
-    st.header("💰 1. ICEYE Investment")
+    st.header("💰 1. Annual SAR Investment")
     annual_sub = st.number_input("Annual Subscription ($)", value=150000)
     events_per_year = st.slider("Flood Events / Year", 1, 10, 2)
     
@@ -45,34 +45,34 @@ with col_right:
     st.info("💡 **SAR Logic:** ICEYE data replaces all search flights. You only visit confirmed wet assets.")
 
 # --- THE CORRECT MATH ---
-# 1. Legacy Costs (Everything is expensive because you don't know where the water is)
+# 1. Legacy Costs (Operational Only)
 t_standby = hourly_burn * t_wait
 t_recon = (t_helo * helo_hr) + (t_drone * drone_day)
-t_inspect = t_assets * 350 # Visiting every asset to check status
+t_inspect = t_assets * 350 
 t_total_event = t_standby + t_recon + t_inspect
 
-# 2. SAR Costs (The Data Layer is the recon)
+# 2. SAR Costs (Operational Only - Aerial is $0)
 s_standby = hourly_burn * s_wait
-s_recon = 0 # THIS IS THE KEY: ICEYE IS THE RECON
-s_inspect = s_assets_wet * 350 # ONLY visiting what the GIS overlay shows as wet
+s_recon = 0 
+s_inspect = s_assets_wet * 350 
 s_total_event = s_standby + s_inspect
 
 # --- RESULTS DASHBOARD ---
 st.divider()
 m1, m2, m3 = st.columns(3)
 
-# The "Cost per Event" now refers ONLY to the operational spend (Labor/Fleet/Flights)
-m1.metric("Legacy Spend / Event", f"${t_total_event:,.0f}")
-m2.metric("SAR Spend / Event", f"${s_total_event:,.0f}", 
+# Operational costs strictly per event
+m1.metric("Legacy Ops / Event", f"${t_total_event:,.0f}")
+m2.metric("SAR Ops / Event", f"${s_total_event:,.0f}", 
           delta=f"-${t_total_event - s_total_event:,.0f}", delta_color="inverse")
 
-# Total ROI including the subscription
+# Total ROI including the subscription deduction
 annual_savings = (t_total_event - s_total_event) * events_per_year
 final_position = annual_savings - annual_sub
-m3.metric("Net Annual Position", f"${final_position:,.0f}", help="Total savings minus the 150k sub.")
+m3.metric("Net Annual Position", f"${final_position:,.0f}", help="Total annual savings minus the flat 150k sub.")
 
 # --- THE BREAKDOWN TABLE ---
-st.subheader("Direct Cost Comparison (Per Event)")
+st.subheader("Direct Operational Cost Comparison (Per Event)")
 data = {
     "Expense Category": ["Field Force Standby", "Reconnaissance (Helo/Drone)", "Physical Site Inspections"],
     "Legacy (No SAR)": [f"${t_standby:,.0f}", f"${t_recon:,.0f}", f"${t_inspect:,.0f}"],
@@ -80,4 +80,13 @@ data = {
 }
 st.table(pd.DataFrame(data))
 
-st.success(f"**The Value:** The ICEYE overlay clears **{int(t_assets - s_assets_wet)}** assets remotely. You save **${t_total_event - s_total_event:,.0f}** in operational waste per event.")
+# --- BAR CHART ---
+st.subheader("Operational Spend Distribution")
+chart_df = pd.DataFrame({
+    "Category": ["Standby Labor", "Aerial Recon", "Site Inspections"],
+    "Legacy": [t_standby, t_recon, t_inspect],
+    "ICEYE": [s_standby, 0, s_inspect]
+})
+st.bar_chart(chart_df.set_index("Category"))
+
+st.success(f"**Outcome:** ICEYE eliminates **${t_recon:,.0f}** in search flights and **{int(t_assets - s_assets_wet)}** unnecessary truck rolls per event.")
