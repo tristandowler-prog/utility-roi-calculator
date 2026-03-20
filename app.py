@@ -54,8 +54,20 @@ res1, res2 = st.columns(2)
 
 with res1:
     st.metric("Trad. Cost per Event", f"AUD ${t_total:,.0f}")
-    st.error(f"Manual response is driven by {t_wait} hours of 'Information Darkness'.")
 
 with res2:
     st.metric("SAR Cost per Event", f"AUD ${s_total:,.0f}", delta=f"-${t_total - s_total:,.0f}", delta_color="inverse")
-    st.success(
+
+# --- THE COMPARISON CHART ---
+st.subheader("Cost Breakdown Comparison (Per Event)")
+chart_data = pd.DataFrame({
+    "Category": ["Labor Standby", "Aerial Surveys", "Wasted Visits"],
+    "Traditional (Manual)": [t_standby, t_aerial, t_friction],
+    "Satellite (SAR)": [s_standby, s_aerial, s_friction]
+})
+st.bar_chart(chart_data.set_index("Category"))
+
+# --- FINAL SUMMARY ---
+savings_per_event = t_total - s_total
+st.divider()
+st.success(f"By investing in a **${annual_sub:,.0f}** annual subscription, the utility reduces its emergency Opex from **${t_total:,.0f}** down to **${s_total:,.0f}** per major flood.")
