@@ -2,161 +2,138 @@ import streamlit as st
 import pandas as pd
 import io
 
-# --- PAGE CONFIG ---
-st.set_page_config(page_title="Strategic Audit | Utility Resilience", layout="wide")
+# --- PAGE SETUP ---
+st.set_page_config(page_title="Strategic Audit | ICEYE Powered", layout="wide")
 
-# --- BIG 4 CONSULTING DESIGN SYSTEM (CLEAN & MODERN) ---
+# --- CUSTOM CSS: GLASS-MORPHISM & SAR THEME ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap');
     
-    html, body, [data-testid="stAppViewContainer"] {
-        font-family: 'Inter', sans-serif;
-        background-color: #FFFFFF;
+    /* SAR-Inspired Background Effect */
+    .stApp {
+        background: linear-gradient(rgba(10, 20, 30, 0.85), rgba(10, 20, 30, 0.85)), 
+                    url("https://www.iceye.com/hubfs/Seeing-the-world-through-SAR-Blog-Thumbnail.jpg");
+        background-size: cover;
+        background-attachment: fixed;
+        color: #E5E7EB;
     }
 
-    /* Professional Sidebar - No Black */
+    /* Clean Sidebar - No Black */
     [data-testid="stSidebar"] {
-        background-color: #F3F4F6;
-        border-right: 1px solid #E5E7EB;
+        background-color: rgba(255, 255, 255, 0.05);
+        backdrop-filter: blur(10px);
+        border-right: 1px solid rgba(255, 255, 255, 0.1);
     }
-    
-    /* Section Cards */
-    .report-card {
-        background-color: #FFFFFF;
-        border-radius: 12px;
-        padding: 25px;
-        border: 1px solid #E5E7EB;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+
+    /* Bento Cards for Big 4 Look */
+    .bento-card {
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 16px;
+        padding: 24px;
+        backdrop-filter: blur(12px);
         margin-bottom: 20px;
     }
 
-    .kpi-box {
-        text-align: center;
-        padding: 25px;
-        background: #F9FAFB;
-        border-radius: 16px;
-        border: 1px solid #E5E7EB;
+    .kpi-value {
+        font-size: 2.5rem;
+        font-weight: 800;
+        color: #FFFFFF;
+        margin: 0;
     }
 
-    .section-header {
+    .kpi-label {
         font-size: 0.75rem;
         font-weight: 700;
         color: #9CA3AF;
         text-transform: uppercase;
-        letter-spacing: 2px;
-        margin-bottom: 5px;
+        letter-spacing: 1.5px;
     }
 </style>
 """, unsafe_allow_html=True)
 
-# --- HERO IMAGE: SAR FLOOD EXTENT ---
-
-st.markdown("<p style='text-align: right; font-size: 10px; color: #9CA3AF;'>GROUND TRUTH: SATELLITE RADAR (SAR) FLOOD ANALYSIS</p>", unsafe_allow_html=True)
-
-# --- SIDEBAR: LEVERS & TOGGLES ---
+# --- SIDEBAR: CONTROLS & TOGGLES ---
 with st.sidebar:
-    st.markdown("<h2 style='color:#111827;'>Audit Controls</h2>", unsafe_allow_html=True)
+    st.markdown("<h2 style='color:white;'>Audit Controls</h2>", unsafe_allow_html=True)
     
-    st.markdown("### 🔘 Enable Audit Modules")
-    show_aerial = st.toggle("Aerial Reconnaissance", value=True)
-    show_field = st.toggle("Field Force & Labor", value=True)
-    show_contractors = st.toggle("Contractor Mobilization", value=True)
+    # MASTER TOGGLES
+    st.markdown("### 🔘 Module Selection")
+    enable_aerial = st.toggle("Aerial Reconnaissance", value=True)
+    enable_field = st.toggle("Field Force / Truck Rolls", value=True)
+    enable_mob = st.toggle("Contractor Mobilization", value=True)
     
     st.divider()
     
-    with st.expander("📡 DATA & SAR SPECS"):
-        sar_sub = st.number_input("Annual SAR Subscription (AUD)", value=150000)
-        events_per_year = st.slider("Annual Flood Events", 1, 12, 6)
-        sar_latency = st.select_slider("Refresh Cadence", options=["48h", "24h", "12h", "6h"], value="6h")
+    with st.expander("🛠️ BASELINE VARIABLES"):
+        labor_rate = st.number_input("AU Labor Rate (Burdened $/hr)", value=185)
+        helo_rate = st.number_input("Helicopter Rate ($/hr)", value=2800)
+        drone_rate = st.number_input("Drone Team Rate ($/hr)", value=450)
+        truck_roll_cost = st.number_input("Cost per Field Visit ($)", value=450)
+    
+    with st.expander("📡 DATA CADENCE"):
+        sar_sub = st.number_input("Annual SAR Sub (AUD)", value=150000)
+        events_year = st.slider("Flood Events / Year", 1, 10, 6)
+        latency = st.select_slider("Refresh Window", ["48h", "24h", "12h", "6h"], "6h")
 
-    with st.expander("🏗️ NETWORK SCALE"):
-        total_assets = st.number_input("Substations in Footprint", value=500)
-        inundation_pct = st.slider("Actual Inundation (%)", 5, 100, 20)
-        labor_rate = st.number_input("Labor Rate ($/hr)", value=185)
+# --- CALCULATION ENGINE ---
+total_assets = 500
+inundation_pct = 0.20
+actual_wet = int(total_assets * inundation_pct)
 
-# --- CALCULATIONS ---
-actual_wet = int(total_assets * (inundation_pct / 100))
-data_share = sar_sub / events_per_year
+# Legacy Logic
+leg_aerial = (helo_rate * 12) + (drone_rate * 20) if enable_aerial else 0
+leg_field = (120 * labor_rate * 48) + (total_assets * truck_roll_cost) if enable_field else 0
+leg_mob = (10 * 15000) if enable_mob else 0
+legacy_total = leg_aerial + leg_field + leg_mob
 
-# LEGACY VS SAR PILLARS
-# 1. Aerial
-leg_aerial = (2800 * 12) + (450 * 20) if show_aerial else 0
+# SAR Logic
 sar_aerial = 0
+sar_field = (120 * labor_rate * 4) + (actual_wet * truck_roll_cost) if enable_field else 0
+sar_mob = (leg_mob * 0.6) if enable_mob else 0 # 40% reduction through intel
+sar_total = (sar_sub/events_year) + sar_field + sar_mob
 
-# 2. Labor
-leg_labor = (120 * labor_rate * 48) + (total_assets * 450) if show_field else 0
-sar_labor = (120 * labor_rate * 4) + (actual_wet * 450) if show_field else 0
-
-# 3. Contractors
-leg_mob = (10 * 15000) if show_contractors else 0
-sar_mob = (leg_mob * 0.6) if show_contractors else 0 # 40% reduction
-
-# Totals
-legacy_total = leg_aerial + leg_labor + leg_mob
-sar_total = data_share + sar_aerial + sar_labor + sar_mob
-
-annual_savings = (legacy_total - sar_total) * events_per_year
+annual_savings = (legacy_total - sar_total) * events_year
 roi = (annual_savings / sar_sub) * 100
 
-# --- MAIN REPORT ---
-st.markdown("<p class='section-header'>Strategic Insight Engine</p>", unsafe_allow_html=True)
-st.title("Utility Flood Response: Operational Audit")
-st.markdown(f"**Network Scope:** {total_assets} Assets | **Scenario:** {inundation_pct}% Inundated")
+# --- MAIN REPORT SECTION ---
+st.markdown("<p style='color: #60A5FA; font-weight: 700; letter-spacing: 1px;'>UTILITY STRATEGIC ADVISORY</p>", unsafe_allow_html=True)
+st.title("SAR Efficiency Audit: Infrastructure Restoration")
 
-# KPI STRIP
-k1, k2, k3 = st.columns(3)
-with k1:
-    st.markdown(f"<div class='kpi-box'><p class='section-header'>Annual Cash Avoidance</p><h2>${annual_savings:,.0f}</h2></div>", unsafe_allow_html=True)
-with k2:
-    st.markdown(f"<div class='kpi-box'><p class='section-header'>Projected ROI</p><h2 style='color:#059669;'>{roi:,.0f}%</h2></div>", unsafe_allow_html=True)
-with k3:
-    st.markdown(f"<div class='kpi-box'><p class='section-header'>Restoration Advance</p><h2 style='color:#2563EB;'>44 Hours</h2></div>", unsafe_allow_html=True)
+# TOP LEVEL KPI GRID
+c1, c2, c3 = st.columns(3)
+with c1:
+    st.markdown(f'<div class="bento-card"><p class="kpi-label">Annual Cash Avoidance</p><p class="kpi-value">${annual_savings:,.0f}</p></div>', unsafe_allow_html=True)
+with c2:
+    st.markdown(f'<div class="bento-card"><p class="kpi-label">Strategic ROI</p><p class="kpi-value" style="color:#34D399;">{roi:,.0f}%</p></div>', unsafe_allow_html=True)
+with c3:
+    st.markdown(f'<div class="bento-card"><p class="kpi-label">Restoration Acceleration</p><p class="kpi-value" style="color:#60A5FA;">44 Hrs</p></div>', unsafe_allow_html=True)
 
-st.markdown("<br>", unsafe_allow_html=True)
+# DYNAMIC REPORT MODULES
+st.markdown("### 🧩 Operational Intelligence Breakdown")
 
-# THE DYNAMIC REPORT SECTIONS
-st.markdown("### Executive Audit Breakdown")
-
-if show_aerial:
-    with st.container():
-        st.markdown("""<div class='report-card'><strong>Pillar 1: Aerial Reconnaissance</strong><br>
-        Traditional response relies on helicopter/drone scouting to 'find' the flood line. SAR provides this digitally, allowing 
-        immediate stand-down of aerial contracts.</div>""", unsafe_allow_html=True)
+if enable_aerial:
+    with st.expander("🚁 PILLAR: AERIAL RECONNAISSANCE", expanded=True):
+        st.write("SAR provides wide-area flood extent through cloud and night, rendering legacy helicopter/drone scouting redundant.")
         
 
-if show_field:
-    with st.container():
-        st.markdown(f"""<div class='report-card'><strong>Pillar 2: Field Force Optimization</strong><br>
-        By eliminating 'Dry Site' visits, you avoid <strong>{total_assets - actual_wet} wasted truck rolls</strong>. 
-        Field teams move directly to impacted substations for Trip 1 resolution.</div>""", unsafe_allow_html=True)
+if enable_field:
+    with st.expander("🚛 PILLAR: FIELD FORCE OPTIMIZATION", expanded=True):
+        st.write(f"Intel-driven dispatch eliminates truck rolls to **{total_assets - actual_wet} dry assets**. Focus remains on high-value wet repairs.")
         
 
-if show_contractors:
-    with st.container():
-        st.markdown("""<div class='report-card'><strong>Pillar 3: Contractor Mobilization</strong><br>
-        Precise damage intelligence allows the utility to defer or cancel expensive mutual aid crews until 
-        the specific scope of work is confirmed.</div>""", unsafe_allow_html=True)
+# THE CORE AUDIT TABLE (DARK MODE TABLE STYLE)
+st.markdown("### 📊 Financial Variance Audit")
+audit_table = pd.DataFrame({
+    "Component": ["Aerial Recon", "Field Search Labor", "Site Verification", "Contractor Mob"],
+    "Legacy Model (AUD)": [f"${leg_aerial:,.0f}", f"${(120*labor_rate*48):,.0f}", f"${(total_assets*truck_roll_cost):,.0f}", f"${leg_mob:,.0f}"],
+    "SAR Model (AUD)": ["$0", f"${(120*labor_rate*4):,.0f}", f"${(actual_wet*truck_roll_cost):,.0f}", f"${sar_mob:,.0f}"],
+    "Efficiency Gain": ["-100%", "-92%", "-80%", "-40%"]
+})
+st.table(audit_table)
 
-# AUDIT TABLE
-st.subheader("Financial Variance Audit")
-audit_data = {
-    "Operational Module": ["Aerial Recon", "Search Labor", "Asset Visits", "Contractor Mob"],
-    "Legacy Model (AUD)": [f"${leg_aerial:,.0f}", f"${(120 * labor_rate * 48):,.0f}", f"${(total_assets * 450):,.0f}", f"${leg_mob:,.0f}"],
-    "SAR Model (AUD)": ["$0", f"${(120 * labor_rate * 4):,.0f}", f"${(actual_wet * 450):,.0f}", f"${sar_mob:,.0f}"],
-}
-st.table(pd.DataFrame(audit_data))
-
-# DOWNLOAD BUTTON
+# EXPORT
 st.divider()
-csv_buffer = io.StringIO()
-pd.DataFrame(audit_data).to_csv(csv_buffer, index=False)
-st.download_button(
-    label="📥 Download Strategic Audit Report",
-    data=csv_buffer.getvalue(),
-    file_name="Utility_Strategic_Audit.csv",
-    mime="text/csv",
-    use_container_width=True
-)
-
-st.markdown("<p style='text-align:center; color:#9CA3AF; font-size: 0.8rem;'>PREPARED FOR BOARD REVIEW | © 2026 STRATEGIC INSIGHT ENGINE</p>", unsafe_allow_html=True)
+csv_file = io.StringIO()
+audit_table.to_csv(csv_file, index=False)
+st.download_button("📥 Export Board-Ready Audit (CSV)", csv_file.getvalue(), "SAR_Audit_Report.csv", "text/csv", use_container_width=True)
