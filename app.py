@@ -15,8 +15,8 @@ def create_download_link(val1, val2, val3, df):
     b64 = base64.b64encode(report_text.encode()).decode()
     return f'<a href="data:file/txt;base64,{b64}" download="SAR_ROI_Report.txt" style="text-decoration:none;">📩 Download Full Audit Report</a>'
 
-st.title("🛰️ SAR Strategic ROI: The Efficiency Filter")
-st.markdown("### *Why Legacy Costs are 'Fixed Waste' while SAR is 'Scalable Work'*")
+st.title("🛰️ SAR Strategic ROI: Mobilization & Efficiency")
+st.markdown("### *Why Intel Wins Even When Every Asset is Wet*")
 st.divider()
 
 # --- SIDEBAR: OPERATIONAL CONSTANTS ---
@@ -26,14 +26,18 @@ with st.sidebar:
     events_per_year = st.slider("Flood Events Per Year", 1, 15, 10)
     
     st.divider()
-    st.header("👥 2. Fleet & Labor Rates")
-    total_people = st.number_input("Total Personnel Dispatched", value=120)
-    labor_rate = st.number_input("Labor Rate ($/hr)", value=175)
-    num_cars = st.number_input("Number of Vehicles", value=50)
-    car_rate = st.number_input("Vehicle Rate ($/hr)", value=55)
+    st.header("👥 2. Force Multipliers")
+    total_people = st.number_input("Internal Personnel Dispatched", value=120)
+    labor_rate = st.number_input("Internal Labor Rate ($/hr)", value=175)
     
-    hourly_burn = (total_people * labor_rate) + (num_cars * car_rate)
-    st.info(f"**Field Force Burn:** ${hourly_burn:,.0f}/hr")
+    st.divider()
+    st.header("🏗️ 3. Mobilization (Contractors)")
+    st.info("When internal crews are tied up 'searching,' you often have to mobilize outside help to 'fix.'")
+    contractor_crews = st.number_input("Contractor Crews Called In", value=10)
+    mob_fee_per_crew = st.number_input("Mobilization Fee per Crew ($)", value=15000)
+    
+    hourly_burn = (total_people * labor_rate) + (contractor_crews * 2 * 300) # Assuming 2 people/crew at $300/hr
+    st.write(f"**Total Force Burn:** ${hourly_burn:,.0f}/hr")
 
 # --- DATA SHARE ---
 data_share = annual_sub / events_per_year
@@ -41,73 +45,86 @@ data_share = annual_sub / events_per_year
 col_left, col_right = st.columns(2)
 
 with col_left:
-    st.subheader("🔴 Legacy (Fixed Search Cost)")
-    t_search_hrs = st.number_input("Blind Scouting Hours", value=48, key="leg_search")
+    st.subheader("🔴 Legacy (Manual Response)")
     
-    with st.expander("🚁 Aerial Recon (Editable)", expanded=True):
-        helo_rate = st.number_input("Helicopter Rate ($/hr)", value=4500)
-        helo_count = st.number_input("Number of Helicopters", value=2)
-        helo_hrs = st.number_input("Flight Hours per Helo", value=8)
-        drone_fixed = st.number_input("Drone Team Total ($)", value=15000)
-        total_aerial = (helo_rate * helo_count * helo_hrs) + drone_fixed
+    t_search_hrs = st.number_input("Blind Scouting Hours", value=48, key="leg_search")
+    st.caption("Time spent with internal crews 'looking' for the flood extent.")
+    
+    total_aerial = st.number_input("Total Aerial Recon Cost / Event ($)", value=85000)
+    st.caption("Fixed cost for helicopters and drones to map the damage.")
 
+    t_mob_cost = contractor_crews * mob_fee_per_crew
+    st.caption(f"**Mobilization Cost:** ${t_mob_cost:,.0f} spent calling in external help.")
+    
     t_total_assets = st.number_input("Total Assets in Flood Zone", value=500)
-    t_visit_cost = st.number_input("Cost per Site Visit ($)", value=450)
+    t_double_trip_rate = st.slider("Legacy 'Double Trip' %", 0, 100, 30)
+    st.caption("Percentage of sites requiring a second visit because Trip 1 lacked the right intel/gear.")
+    
     t_repair_hrs = st.number_input("Legacy Repair Hours", value=96, key="leg_repair")
     
-    # LEGACY MATH: You pay for the search of ALL assets
+    # Legacy Math
     legacy_search_labor = hourly_burn * t_search_hrs
-    legacy_visits = t_total_assets * t_visit_cost  # EVERY asset is visited
+    legacy_base_visits = t_total_assets * 450
+    legacy_double_trips = (t_total_assets * (t_double_trip_rate/100)) * 450
     legacy_repair_labor = hourly_burn * t_repair_hrs
-    legacy_total = legacy_search_labor + total_aerial + legacy_visits + legacy_repair_labor
+    legacy_total = legacy_search_labor + total_aerial + t_mob_cost + legacy_base_visits + legacy_double_trips + legacy_repair_labor
 
 with col_right:
-    st.subheader("🔵 SAR (Variable Work Cost)")
-    s_desk_hrs = st.number_input("Desk Review Hours (Targeting)", value=4, key="sar_desk")
+    st.subheader("🔵 SAR (Intelligence-Led)")
     
-    # THE VARIABLE: Confirmed Wet Sites
-    s_wet_assets = st.number_input("Confirmed 'Wet' Assets (Targeted)", value=55)
+    s_desk_hrs = st.number_input("Desk Review Hours", value=4, key="sar_desk")
+    st.caption("Time spent using satellite data to identify wet sites from the office.")
+    
+    s_mob_reduction = st.slider("Contractor Reduction with SAR (%)", 0, 100, 50)
+    st.caption("Because you skip 'searching,' you can often avoid calling in half of the expensive contractors.")
+    
+    s_mob_cost = (contractor_crews * (1 - s_mob_reduction/100)) * mob_fee_per_crew
+    
+    s_wet_assets = st.number_input("Confirmed 'Wet' Assets", value=500)
     s_repair_hrs = st.number_input("Targeted Repair Hours", value=72, key="sar_repair")
+    st.caption("Faster wrench-time because crews arrive with depth-specific gear on Trip 1.")
     
-    # SAR MATH: Only pay for the search of WET assets
+    # SAR Math
     sar_desk_labor = hourly_burn * s_desk_hrs
-    sar_targeted_visits = s_wet_assets * t_visit_cost # ONLY wet assets are visited
+    sar_targeted_visits = s_wet_assets * 450
     sar_repair_labor = hourly_burn * s_repair_hrs
-    sar_total = data_share + sar_desk_labor + sar_targeted_visits + sar_repair_labor
+    sar_total = data_share + sar_desk_labor + s_mob_cost + sar_targeted_visits + sar_repair_labor
     
-    # Analysis of the Waste
-    wasted_visits = (t_total_assets - s_wet_assets)
-    wasted_dollars = wasted_visits * t_visit_cost
-    st.error(f"⚠️ **Legacy Inefficiency:** You are paying **${wasted_dollars:,.0f}** to visit {wasted_visits} assets that aren't even wet.")
+    st.success(f"💡 **SAR Logic:** Subscription share is **${data_share:,.0f}**. You avoided **${t_mob_cost - s_mob_cost:,.0f}** in contractor fees.")
 
 # --- DASHBOARD ---
 st.divider()
 m1, m2, m3 = st.columns(3)
 
 m1.metric("Legacy Cost / Event", f"${legacy_total:,.0f}")
-m2.metric("SAR Cost / Event", f"${sar_total:,.0f}", 
-          delta=f"-${legacy_total - sar_total:,.0f}", delta_color="inverse")
-m3.metric("Annual ROI (Net Savings)", f"${(legacy_total - sar_total) * events_per_year:,.0f}")
+st.caption("The total cost of manual search, wasted truck rolls, and full contractor mobilization.")
 
-# --- THE BREAKDOWN TABLE ---
-st.subheader("Why Legacy is 'Flat': Search vs. Fix")
+m2.metric("SAR Cost / Event", f"${sar_total:,.0f}", delta=f"-${legacy_total - sar_total:,.0f}", delta_color="inverse")
+st.caption("The optimized cost: subscription share + targeted fix only.")
+
+m3.metric("Annual ROI (Net)", f"${(legacy_total - sar_total) * events_per_year:,.0f}")
+st.caption("The total money returned to the utility budget over the course of the year.")
+
+# --- THE COMPARISON TABLE ---
+st.subheader("Operational Efficiency Audit")
 comparison_df = pd.DataFrame({
-    "Phase": ["Discovery (Search/Aerial)", "Wasted Truck Rolls (Dry Sites)", "Productive Truck Rolls (Wet Sites)", "Repair Labor", "SAR Data Access"],
-    "Legacy ($)": [f"${legacy_search_labor + total_aerial:,.0f}", f"${wasted_dollars:,.0f}", f"${sar_targeted_visits:,.0f}", f"${legacy_repair_labor:,.0f}", "$0"],
-    "SAR ($)": [f"${sar_desk_labor:,.0f}", "$0 (Bypassed)", f"${sar_targeted_visits:,.0f}", f"${sar_repair_labor:,.0f}", f"${data_share:,.0f}"]
+    "Cost Driver": ["Discovery (Search/Helos)", "Contractor Mobilization", "Site Visits (Incl. Waste)", "Repair Labor (Wrench Time)", "SAR Subscription"],
+    "Legacy Approach ($)": [f"${legacy_search_labor + total_aerial:,.0f}", f"${t_mob_cost:,.0f}", f"${legacy_base_visits + legacy_double_trips:,.0f}", f"${legacy_repair_labor:,.0f}", "$0"],
+    "SAR Approach ($)": [f"${sar_desk_labor:,.0f}", f"${s_mob_cost:,.0f}", f"${sar_targeted_visits:,.0f}", f"${sar_repair_labor:,.0f}", f"${data_share:,.0f}"]
 })
 st.table(comparison_df)
 
 # --- CHART ---
-st.subheader("Operational Spend Analysis")
+
+st.subheader("The 'Wasted Motion' Audit")
 chart_df = pd.DataFrame({
-    "Activity": ["Search Waste", "Productive Work", "Data Subscription"],
-    "Legacy": [legacy_search_labor + total_aerial + wasted_dollars, sar_targeted_visits + legacy_repair_labor, 0],
-    "SAR": [sar_desk_labor, sar_targeted_visits + sar_repair_labor, data_share]
+    "Activity": ["Scouting Waste", "Contractor Mob", "Direct Repairs", "SAR Subscription"],
+    "Legacy": [legacy_search_labor + total_aerial + legacy_double_trips, t_mob_cost, legacy_repair_labor + legacy_base_visits, 0],
+    "SAR": [sar_desk_labor, s_mob_cost, sar_repair_labor + sar_targeted_visits, data_share]
 })
 st.bar_chart(chart_df.set_index("Activity"))
 
-st.success(f"**The Verdict:** Even if damage is 100%, SAR wins by eliminating helicopters and scouting labor. But when damage is low (the typical case), SAR wins by **millions** by preventing 100s of useless site visits.")
+st.success(f"**Executive Verdict:** SAR converts **${legacy_search_labor + legacy_double_trips + (t_mob_cost - s_mob_cost):,.0f}** in operational waste into bottom-line savings per event.")
 
 # --- EXPORT ---
-st.markdown(create_download_link(f"${legacy_total:,.0f}", f"${sar_total:,.0f}", f"${(legacy_total - sar_total) * events_per_year:,.0f}", comparison_df), unsafe_allow_html=True)
+st.markdown(create_download_link(f"${legacy_total:,.0f}", f"${sar_total:,.0f}", f"${(legacy_total - sar_total) * events_per_
