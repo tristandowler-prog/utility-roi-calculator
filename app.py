@@ -69,16 +69,28 @@ with col_right:
     st.info(f"Subscription (${annual_sub:,.0f}) ÷ Events ({events_per_year}) = **${sar_total:,.0f} per event**")
     st.write("*(SAR replaces all manual field scouting and aerial recon costs)*")
 
-# --- DASHBOARD (SYNTAX AUDITED) ---
+# --- DASHBOARD (AUDITED FOR SYNTAX) ---
 st.divider()
 m1, m2, m3 = st.columns(3)
 
+# Pre-formatting strings to keep function calls clean
 m_total_str = f"${manual_total:,.0f}"
 s_total_str = f"${sar_total:,.0f}"
+
 delta_val = manual_total - sar_total
 delta_str = f"-${delta_val:,.0f}"
 
 annual_net = (manual_total * events_per_year) - annual_sub
 annual_net_str = f"${annual_net:,.0f}"
 
-m1.metric("Manual Search Cost / Event", m_total_str
+# Audited metric calls
+m1.metric("Manual Search Cost / Event", m_total_str)
+m2.metric("True SAR Cost / Event", s_total_str, delta=delta_str, delta_color="inverse")
+m3.metric("Net Annual Savings", annual_net_str)
+
+# --- THE BREAKDOWN TABLE ---
+st.subheader("Cost Comparison per Event")
+comparison_df = pd.DataFrame({
+    "Category": ["Field Search Labor", "Aerial Search (Helo/Drone)", "SAR Data Share"],
+    "Manual Search ($)": [f"${manual_labor:,.0f}", f"${manual_aerial:,.0f}", "$0"],
+    "SAR Strategy ($)": ["$0 (Replaced)", "$0 (Replaced
