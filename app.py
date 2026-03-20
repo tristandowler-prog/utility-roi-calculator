@@ -3,80 +3,81 @@ import pandas as pd
 
 st.set_page_config(page_title="ICEYE SAR ROI", layout="wide")
 
-st.title("🛰️ ICEYE SAR: Infrastructure Impact ROI")
-st.markdown("### *GIS Overlay Logic: Replacing 'Manual Search' with 'Observed Truth'*")
+st.title("🛰️ ICEYE SAR: Strategic ROI Engine")
+st.markdown("### *Observed Flood Data vs. Manual Infrastructure Verification*")
 st.divider()
 
-# --- SIDEBAR: OPERATIONAL COSTS ---
+# --- SIDEBAR: COSTS ---
 with st.sidebar:
     st.header("💰 1. ICEYE Investment")
     annual_sub = st.number_input("Annual Subscription ($)", value=150000)
     events_per_year = st.slider("Flood Events / Year", 1, 10, 2)
     
     st.divider()
-    st.header("👥 2. Field Force Burn Rate")
-    total_people = st.number_input("Total Personnel Dispatched", value=120)
+    st.header("👥 2. Workforce Burn Rate")
+    total_people = st.number_input("Total Personnel", value=120)
     person_hr = st.number_input("Labor Rate ($/hr)", value=175)
     vehicle_hr = st.number_input("Fleet Rate ($/hr)", value=55)
     
-    st.header("🚁 3. Legacy Recon (Avoided Cost)")
+    st.header("🚁 3. Legacy Search Rates")
     helo_hr = st.number_input("Helicopter Rate ($/hr)", value=4500)
-    drone_team_day = st.number_input("Drone Team Rate ($/day)", value=2500)
+    drone_day = st.number_input("Drone Team Rate ($/day)", value=2500)
 
 # --- SYSTEM MATH ---
 num_vehicles = total_people / 2.5
 hourly_burn = (total_people * person_hr) + (num_vehicles * vehicle_hr)
 
-# --- SCENARIO INPUTS ---
+# --- SCENARIOS ---
 col_left, col_right = st.columns(2)
 
 with col_left:
-    st.subheader("🔴 Legacy: Manual Verification")
-    t_wait = st.number_input("Access Delay (Hrs)", value=48, help="Waiting for water to recede to allow safe aerial or ground recon.")
-    t_assets = st.number_input("Total Assets in Storm Area", value=2000, help="Total infrastructure that must be 'cleared' manually.")
-    t_helo_hrs = st.number_input("Helo Flight Hours (Patrol)", value=15)
-    t_drone_days = st.number_input("Drone Team Days", value=12)
+    st.subheader("🔴 Legacy: Search & Rescue")
+    t_wait = st.number_input("Wait for Visual Access (Hrs)", value=48)
+    t_assets = st.number_input("Total Assets in Zone", value=2000)
+    t_helo = st.number_input("Helicopter Patrol Hours", value=15)
+    t_drone = st.number_input("Drone Team Days", value=12)
 
 with col_right:
-    st.subheader("🔵 ICEYE: GIS-Directed Response")
-    s_wait = st.number_input("Time to ICEYE Layer (Hrs)", value=8, help="Typical delivery time for SAR flood extent/depth layers.")
-    # The outcome of the GIS Overlay
-    s_assets_wet = st.number_input("Assets Impacted by Flood Layer", value=140, help="Specific assets where ICEYE depth data > 0.")
-    st.info(f"💡 **The GIS Filter:** The overlay instantly 'clears' **{int(t_assets - s_assets_wet)}** assets. No truck roll or flight required.")
+    st.subheader("🔵 ICEYE: Observed Truth")
+    s_wait = st.number_input("Time to Data Layer (Hrs)", value=8)
+    # The result of the GIS Overlay
+    s_assets_wet = st.number_input("GIS-Confirmed Wet Assets", value=140)
+    st.info("💡 **SAR Logic:** ICEYE data replaces all search flights. You only visit confirmed wet assets.")
 
-# --- THE MATH ---
-# Legacy: Costs of finding and clearing 2000 assets
+# --- THE CORRECT MATH ---
+# 1. Legacy Costs (Everything is expensive because you don't know where the water is)
 t_standby = hourly_burn * t_wait
-t_aerial = (t_helo_hrs * helo_hr) + (t_drone_days * drone_team_day)
-t_inspect = t_assets * 350  # Average cost of a 'search-and-clear' site visit
-t_total_event = t_standby + t_aerial + t_inspect
+t_recon = (t_helo * helo_hr) + (t_drone * drone_day)
+t_inspect = t_assets * 350 # Visiting every asset to check status
+t_total_event = t_standby + t_recon + t_inspect
 
-# ICEYE: Costs of a targeted response
+# 2. SAR Costs (The Data Layer is the recon)
 s_standby = hourly_burn * s_wait
-s_inspect = s_assets_wet * 350 # Targeted visits ONLY to confirmed wet assets
-s_total_event = s_standby + s_inspect # NO HELO/DRONE COST
+s_recon = 0 # THIS IS THE KEY: ICEYE IS THE RECON
+s_inspect = s_assets_wet * 350 # ONLY visiting what the GIS overlay shows as wet
+s_total_event = s_standby + s_inspect
 
-# --- DASHBOARD ---
+# --- RESULTS DASHBOARD ---
 st.divider()
 m1, m2, m3 = st.columns(3)
 
-# 1. Operational cost per event (Direct spend)
+# The "Cost per Event" now refers ONLY to the operational spend (Labor/Fleet/Flights)
 m1.metric("Legacy Spend / Event", f"${t_total_event:,.0f}")
-m2.metric("ICEYE Spend / Event", f"${s_total_event:,.0f}", 
+m2.metric("SAR Spend / Event", f"${s_total_event:,.0f}", 
           delta=f"-${t_total_event - s_total_event:,.0f}", delta_color="inverse")
 
-# 2. Total Annual Position
-savings_per_event = t_total_event - s_total_event
-annual_net = (savings_per_event * events_per_year) - annual_sub
-m3.metric("Net Annual Position", f"${annual_net:,.0f}", help="Sum of event savings minus the subscription fee.")
+# Total ROI including the subscription
+annual_savings = (t_total_event - s_total_event) * events_per_year
+final_position = annual_savings - annual_sub
+m3.metric("Net Annual Position", f"${final_position:,.0f}", help="Total savings minus the 150k sub.")
 
-# --- COMPARISON TABLE ---
-st.subheader("Workforce Efficiency (Per Event)")
+# --- THE BREAKDOWN TABLE ---
+st.subheader("Direct Cost Comparison (Per Event)")
 data = {
-    "Category": ["Standby (Information Gap)", "Aerial Search (Helo/Drone)", "Physical Site Verification"],
-    "Legacy Method ($)": [f"${t_standby:,.0f}", f"${t_aerial:,.0f}", f"${t_inspect:,.0f}"],
-    "ICEYE GIS Method ($)": [f"${s_standby:,.0f}", "$0 (Replaced by Data)", f"${s_inspect:,.0f}"]
+    "Expense Category": ["Field Force Standby", "Reconnaissance (Helo/Drone)", "Physical Site Inspections"],
+    "Legacy (No SAR)": [f"${t_standby:,.0f}", f"${t_recon:,.0f}", f"${t_inspect:,.0f}"],
+    "ICEYE (With SAR)": [f"${s_standby:,.0f}", "$0 (Replaced by Data)", f"${s_inspect:,.0f}"]
 }
 st.table(pd.DataFrame(data))
 
-st.success(f"**Hard Saving:** The ICEYE layer prevents **{int(t_assets - s_assets_wet)}** unnecessary site visits and eliminates **${t_aerial:,.0f}** in search flights.")
+st.success(f"**The Value:** The ICEYE overlay clears **{int(t_assets - s_assets_wet)}** assets remotely. You save **${t_total_event - s_total_event:,.0f}** in operational waste per event.")
