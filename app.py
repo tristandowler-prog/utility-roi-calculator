@@ -1,126 +1,117 @@
 import streamlit as st
 import numpy as np
 import pandas as pd
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib.pagesizes import A4
 
 # --- PAGE SETUP ---
-st.set_page_config(page_title="Flood Intelligence | Command Platform", layout="wide")
-
-# --- STYLE ---
-st.markdown("""
-<style>
-.stApp {
-    background: #0A1623;
-    color: #F1F5F9;
-}
-.metric {
-    padding: 20px;
-    border-left: 4px solid #00D1FF;
-    background: rgba(255,255,255,0.03);
-    margin-bottom: 15px;
-}
-</style>
-""", unsafe_allow_html=True)
+st.set_page_config(page_title="Flood Intelligence | Boardroom Engine", layout="wide")
 
 # --- SIDEBAR ---
 with st.sidebar:
-    st.title("⚙️ Scenario Builder")
+    st.title("⚙️ Customer Inputs (AU Utility Calibrated)")
 
-    scenario = st.selectbox("Event Type", [
-        "Urban Flood",
-        "Regional Storm",
-        "Severe Black Swan"
-    ])
+    st.markdown("### 📡 Subscription")
+    sar_sub = st.number_input("Annual Subscription ($)", value=150000)
 
-    latency = st.select_slider("Satellite Latency", ["6h","12h","24h","48h"], value="12h")
+    st.markdown("### 🌊 Event Profile")
+    events_per_year = st.slider("Flood Events / Year", 1, 10, 4)
+    scenario = st.selectbox("Scenario", ["Urban Flood","Regional Storm","Severe Event"])
 
-    total_assets = st.number_input("Total Network Assets", value=1200)
-    inundation = st.slider("% Assets Impacted", 1, 100, 25)
+    st.markdown("### 🏗️ Network")
+    total_assets = st.number_input("Total Assets", value=1200)
+    inundation = st.slider("% Impacted", 1, 100, 25)
 
-    crew_cost = st.number_input("Crew Dispatch Cost ($)", value=850)
-    events_per_year = st.slider("Events / Year", 1, 10, 4)
+    st.markdown("### 🚛 Operations")
+    crew_cost = st.number_input("Crew Cost ($)", value=850)
+    base_search_time = st.number_input("Search Time (mins)", value=44)
+    double_trip_risk = st.slider("Double Dispatch Risk (%)", 0, 100, 40)
 
-# --- SCENARIO LOGIC ---
-scenario_multiplier = {
-    "Urban Flood": 1.0,
-    "Regional Storm": 1.4,
-    "Severe Black Swan": 2.2
-}[scenario]
+    st.markdown("### ⚖️ Regulatory (AER/STPIS)")
+    stpis_penalty = st.number_input("Penalty ($/min/asset)", value=125)
 
+    st.markdown("### ⏱️ Data")
+    latency = st.select_slider("Latency", ["6h","12h","24h","48h"], value="12h")
+
+# --- FACTORS ---
+scenario_multiplier = {"Urban Flood":1.0,"Regional Storm":1.4,"Severe Event":2.0}[scenario]
 latency_factor = {"6h":1.0,"12h":0.8,"24h":0.5,"48h":0.2}[latency]
 
+# --- CALCULATIONS ---
 exposed_assets = int(total_assets * (inundation/100))
-blind_dispatch_rate = (1 - latency_factor) * 100
+dry_assets = total_assets - exposed_assets
 
-# --- DECISION ENGINE ---
-base_decision_delay = 40
-improved_decision_time = base_decision_delay * latency_factor
+visibility = latency_factor * 100
+blind_dispatch_rate = 100 - visibility
 
-time_saved = base_decision_delay - improved_decision_time
+improved_time = base_search_time * latency_factor
+time_saved = base_search_time - improved_time
 
-blind_dispatches = int(exposed_assets * (blind_dispatch_rate/100))
+search_waste = dry_assets * crew_cost
+double_dispatch_cost = exposed_assets * (double_trip_risk/100) * crew_cost
+regulatory_cost = exposed_assets * stpis_penalty * (time_saved * 60)
 
-cost_blind_dispatch = blind_dispatches * crew_cost * scenario_multiplier
+legacy_cost_per_event = (search_waste + double_dispatch_cost + regulatory_cost) * scenario_multiplier
+solution_cost_per_event = exposed_assets * crew_cost
 
-# --- ROI SIMULATION ---
-simulations = np.random.normal(loc=events_per_year, scale=1.2, size=500)
-annual_savings_sim = simulations * cost_blind_dispatch
+legacy_annual = legacy_cost_per_event * events_per_year
+solution_annual = (solution_cost_per_event * events_per_year) + sar_sub
 
-p50 = np.percentile(annual_savings_sim, 50)
-p80 = np.percentile(annual_savings_sim, 80)
+net_benefit = legacy_annual - solution_annual
+roi = (net_benefit / sar_sub) * 100 if sar_sub > 0 else 0
 
-# --- HEADER ---
-st.title("Flood Intelligence Command Platform")
-st.subheader("From Reactive Response → Real-Time Decision Advantage")
+# --- PAYBACK ---
+payback_months = sar_sub / (net_benefit / 12) if net_benefit > 0 else 0
+monthly_cost = sar_sub / 12
+cost_per_event = sar_sub / events_per_year
 
-# --- KPI ROW ---
+# --- UI ---
+st.title("Flood Intelligence | Executive ROI Engine")
+
 c1, c2, c3, c4 = st.columns(4)
 
-with c1:
-    st.markdown(f"<div class='metric'><b>Network Visibility</b><br><h2>{latency_factor*100:.0f}%</h2></div>", unsafe_allow_html=True)
+c1.metric("Visibility", f"{visibility:.0f}%")
+c2.metric("Blind Dispatch", f"{blind_dispatch_rate:.0f}%")
+c3.metric("ROI", f"{roi:,.0f}%")
+c4.metric("Payback", f"{payback_months:.1f} mo")
 
-with c2:
-    st.markdown(f"<div class='metric'><b>Blind Dispatch Rate</b><br><h2>{blind_dispatch_rate:.0f}%</h2></div>", unsafe_allow_html=True)
-
-with c3:
-    st.markdown(f"<div class='metric'><b>Time to Decision</b><br><h2>{improved_decision_time:.1f} min</h2></div>", unsafe_allow_html=True)
-
-with c4:
-    st.markdown(f"<div class='metric'><b>Assets Impacted</b><br><h2>{exposed_assets}</h2></div>", unsafe_allow_html=True)
-
-# --- NARRATIVE OUTPUT ---
 st.success(f"""
-With {latency} satellite latency, your control room operates at {latency_factor*100:.0f}% visibility.
+Annual Net Benefit: ${net_benefit:,.0f}
 
-This reduces blind dispatches by {blind_dispatch_rate:.0f}% and accelerates first decision-making by {time_saved:.1f} minutes.
+Subscription:
+- Monthly: ${monthly_cost:,.0f}
+- Per Event: ${cost_per_event:,.0f}
 
-Estimated avoided cost per event: ${cost_blind_dispatch:,.0f}
+Payback achieved in ~{payback_months:.1f} months
 """)
 
-# --- SIMULATION OUTPUT ---
-st.markdown("## 📊 Annual Impact (Simulated)")
+# --- DO NOTHING ---
+st.error(f"Do Nothing Scenario: Annual Loss = ${legacy_annual:,.0f}")
 
-st.write(f"**Median Annual Savings:** ${p50:,.0f}")
-st.write(f"**80th Percentile Upside:** ${p80:,.0f}")
+# --- PDF GENERATION ---
+def generate_pdf():
+    doc = SimpleDocTemplate("/mnt/data/flood_roi_report.pdf", pagesize=A4)
+    styles = getSampleStyleSheet()
 
-# --- CHART ---
-chart_df = pd.DataFrame({"Simulated Savings": annual_savings_sim})
-st.bar_chart(chart_df)
+    content = []
+    content.append(Paragraph("Flood Intelligence Business Case", styles['Title']))
+    content.append(Spacer(1, 12))
 
-# --- STRATEGIC MESSAGE ---
-st.markdown("---")
-st.markdown("## 🧠 What This Means for Operations")
+    content.append(Paragraph(f"Annual Net Benefit: ${net_benefit:,.0f}", styles['Normal']))
+    content.append(Paragraph(f"ROI: {roi:.0f}%", styles['Normal']))
+    content.append(Paragraph(f"Payback Period: {payback_months:.1f} months", styles['Normal']))
+    content.append(Spacer(1, 12))
 
-st.info("""
-Without real-time flood intelligence:
-- Crews are dispatched blind
-- Restoration is delayed
-- Regulatory exposure increases
+    content.append(Paragraph("Key Assumptions:", styles['Heading2']))
+    content.append(Paragraph(f"Assets: {total_assets}", styles['Normal']))
+    content.append(Paragraph(f"Events/year: {events_per_year}", styles['Normal']))
+    content.append(Paragraph(f"Crew cost: ${crew_cost}", styles['Normal']))
 
-With this platform:
-- You see impacted assets immediately
-- You send the right crew, first time
-- You restore faster and protect revenue
-""")
+    doc.build(content)
+    return "/mnt/data/flood_roi_report.pdf"
 
-# --- CTA ---
-st.button("Generate Executive Brief")
+if st.button("📄 Generate Board PDF"):
+    file_path = generate_pdf()
+    with open(file_path, "rb") as f:
+        st.download_button("Download Report", f, file_name="Flood_ROI_Report.pdf")
