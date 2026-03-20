@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-import base64
+import io
 
 # --- PAGE CONFIG ---
 st.set_page_config(page_title="Strategic Audit | Utility Resilience", layout="wide")
@@ -42,86 +42,108 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- SIDEBAR FILTERS (CUSTOMER INPUTS) ---
+# --- SIDEBAR: GLOBAL LEVERS (AU STANDARD PLACEHOLDERS) ---
 with st.sidebar:
     st.markdown("<h2 style='color:white;'>Audit Filters</h2>", unsafe_allow_html=True)
     
-    with st.expander("📡 SATELLITE & DATA"):
+    with st.expander("📡 DATA & SAR SPECS"):
         sar_sub = st.number_input("Annual SAR Subscription (AUD)", value=150000)
         sar_latency = st.select_slider("Data Refresh Cadence", options=["48h", "24h", "12h", "6h"], value="6h")
-        processing_time = st.number_input("SAR Processing Time (Hrs)", value=1, help="Time from satellite pass to actionable dashboard.")
+        processing_time = st.number_input("Processing Time (Hrs)", value=1)
 
     with st.expander("🚁 AERIAL RECONNAISSANCE"):
-        helo_rate = st.number_input("Helicopter Hourly Rate (AUD)", value=2800, help="Avg AU rate for Bell 206/H125 utility config.")
-        helo_hours = st.number_input("Helo Scouting Hours / Event", value=12)
-        drone_rate = st.number_input("Drone Team Hourly Rate (AUD)", value=450)
-        drone_hours = st.number_input("Drone Scouting Hours / Event", value=20)
+        helo_rate = st.number_input("Helicopter Hourly Rate (AUD)", value=2800)
+        helo_hours = st.number_input("Helo Scouting / Event", value=12)
+        drone_rate = st.number_input("Drone Team Rate (AUD)", value=450)
+        drone_hours = st.number_input("Drone Scouting / Event", value=20)
 
     with st.expander("👥 FIELD FORCE & MOB"):
         labor_rate = st.number_input("Fully Burdened Labor ($/hr)", value=185)
-        crew_size = st.number_input("Emergency Response Staff", value=120)
-        mob_fee = st.number_input("Contractor Mob Fee (Per Crew)", value=15000)
-        num_contractors = st.number_input("Contractor Crews", value=10)
+        crew_size = st.number_input("Internal Staff Count", value=120)
+        mob_fee = st.number_input("Contractor Mob Fee (per Crew)", value=15000)
+        num_contractors = st.number_input("No. of Contractor Crews", value=10)
 
     with st.expander("⛈️ EVENT SCALE"):
         events_per_year = st.slider("Annual Flood Events", 1, 12, 6)
-        total_assets = st.number_input("Substations in Footprint", value=500)
-        inundation_pct = st.slider("Actual Inundation Rate (%)", 5, 100, 20)
+        total_assets = st.number_input("Total Assets in Zone", value=500)
+        inundation_pct = st.slider("Actual Inundation (%)", 5, 100, 20)
 
-# --- LOGIC & CALCULATION ---
+# --- AUDIT CALCULATIONS ---
 actual_wet = int(total_assets * (inundation_pct / 100))
-hourly_burn = (crew_size * labor_rate) + (num_contractors * 750) # contractors cost more
+hourly_burn = (crew_size * labor_rate) + (num_contractors * 750)
 
-# LEGACY MODEL (The "Blind" Response)
-legacy_scouting_cost = (helo_rate * helo_hours) + (drone_rate * drone_hours)
-legacy_labor_search = (hourly_burn * 48) # Avg 2 days blind searching
-legacy_truck_rolls = total_assets * 450 # Checking every single asset
+# LEGACY (BLIND) MODEL
+legacy_aerial = (helo_rate * helo_hours) + (drone_rate * drone_hours)
+legacy_search_labor = (hourly_burn * 48) # 2 days of manual verification
+legacy_truck_rolls = total_assets * 450 # Rolling to every site
 legacy_mob = num_contractors * mob_fee
-legacy_total_event = legacy_scouting_cost + legacy_labor_search + legacy_truck_rolls + legacy_mob
+legacy_total = legacy_aerial + legacy_search_labor + legacy_truck_rolls + legacy_mob
 
-# SAR MODEL (The "Targeted" Response)
-sar_data_cost = sar_sub / events_per_year
-sar_desk_eval = (hourly_burn * 4) # 4 hours to verify dashboard
+# SAR (TARGETED) MODEL
+sar_data_per_event = sar_sub / events_per_year
+sar_desk_eval = (hourly_burn * 4) # Desktop verification vs. Field search
 sar_targeted_rolls = actual_wet * 450 # Only go to wet assets
-sar_mob_saving = legacy_mob * 0.5 # Cancel 50% of contractors
-sar_total_event = sar_data_cost + sar_desk_eval + sar_targeted_rolls + (legacy_mob - sar_mob_saving)
+sar_mob_optimized = legacy_mob * 0.4 # Reduce contractor callouts by 40%
+sar_total = sar_data_per_event + sar_desk_eval + sar_targeted_rolls + (legacy_mob - sar_mob_optimized)
 
-event_savings = legacy_total_event - sar_total_event
+event_savings = legacy_total - sar_total
 annual_savings = event_savings * events_per_year
 roi = (annual_savings / sar_sub) * 100
 
-# --- MAIN REPORT SECTION ---
-st.markdown("<p class='section-header'>Strategic Advisory | Global Utility Infrastructure</p>", unsafe_allow_html=True)
-st.title("Financial & Operational Audit: SAR-Enabled Flood Response")
+# --- MAIN REPORT DISPLAY ---
+st.markdown("<p class='section-header'>Strategic Advisory | Global Infrastructure</p>", unsafe_allow_html=True)
+st.title("SAR-Enabled Flood Response Audit")
 st.markdown("---")
 
-# KPI TOP LINE
-c1, c2, c3 = st.columns(3)
-with c1:
-    st.markdown(f"<div class='kpi-box'><p class='section-header'>Annual Cash Avoidance</p><h2 style='color:#111827;'>${annual_savings:,.0f}</h2></div>", unsafe_allow_html=True)
-with c2:
+# KPI STRIP
+k1, k2, k3 = st.columns(3)
+with k1:
+    st.markdown(f"<div class='kpi-box'><p class='section-header'>Annual Cash Avoidance</p><h2>${annual_savings:,.0f}</h2></div>", unsafe_allow_html=True)
+with k2:
     st.markdown(f"<div class='kpi-box'><p class='section-header'>Strategic ROI</p><h2 style='color:#059669;'>{roi:,.0f}%</h2></div>", unsafe_allow_html=True)
-with c3:
-    st.markdown(f"<div class='kpi-box'><p class='section-header'>SAIDI Recovery Advance</p><h2 style='color:#2563EB;'>44 Hours</h2></div>", unsafe_allow_html=True)
+with k3:
+    st.markdown(f"<div class='kpi-box'><p class='section-header'>Recovery Time Gain</p><h2 style='color:#2563EB;'>44 Hours</h2></div>", unsafe_allow_html=True)
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# THE DETAILED BREAKDOWN
-st.markdown("### 1. The Cost of Uncertainty (Legacy vs. Targeted)")
-col_a, col_b = st.columns([2, 1])
+# THE REPORT BODY
+col_main, col_chart = st.columns([2, 1])
 
-with col_a:
-    st.markdown("""
-    <div class='report-card'>
-        <strong>Analysis of 'Blind' Scouting Overhead</strong><br>
-        In the legacy model, the utility incurs a 'Search Penalty'—paying for helicopters and field crews to verify 
-        assets that are ultimately dry. SAR technology substitutes this physical search with a 6-hour refresh 
-        digital twin, allowing for <strong>Targeted Dispatch</strong>.
-    </div>
-    """, unsafe_allow_html=True)
+with col_main:
+    st.markdown("### Executive Summary: The Scouting Differential")
+    st.markdown(f"""
+    Current response protocols for **{total_assets} assets** rely on manual validation. 
+    By shifting to a **{sar_latency} refresh cadence**, the utility eliminates the 'Search Phase' 
+    (traditionally 48 hours) in favor of immediate, targeted repair mobilization.
+    """)
     
     # Audit Table
-    audit_data = {
-        "Cost Pillar": ["Aerial Recon (Helo/Drone)", "Blind Search Labor", "Asset Verification Visits", "Contractor Mobilization"],
-        "Legacy Model (AUD)": [f"${legacy_scouting_cost:,.0f}", f"${legacy_labor_search:,.0f}", f"${legacy_truck_rolls:,.0f}", f"${legacy_mob:,.0f}"],
-        "SAR Model (AUD)": ["$0", f"${sar_desk_eval:,.0f
+    audit_df = pd.DataFrame({
+        "Cost Pillar": ["Aerial Recon (Helo/Drone)", "Search Phase Labor", "Asset Verification (Truck Rolls)", "Contractor Mobilization"],
+        "Legacy Model (AUD)": [f"${legacy_aerial:,.0f}", f"${legacy_search_labor:,.0f}", f"${legacy_truck_rolls:,.0f}", f"${legacy_mob:,.0f}"],
+        "SAR Model (AUD)": ["$0", f"${sar_desk_eval:,.0f}", f"${sar_targeted_rolls:,.0f}", f"${legacy_mob - sar_mob_optimized:,.0f}"],
+        "Variance": ["-100%", "-92%", f"-{100 - inundation_pct}%", "-40%"]
+    })
+    st.table(audit_df)
+
+with col_chart:
+    st.markdown("#### Event Cost Comparison")
+    chart_data = pd.DataFrame({"Model": ["Legacy", "SAR"], "Cost": [legacy_total, sar_total]}).set_index("Model")
+    st.bar_chart(chart_data)
+
+# THE OFFICIAL DOWNLOAD SECTION
+st.divider()
+st.markdown("<h4 style='text-align:center;'>Finalize Audit & Export</h4>", unsafe_allow_html=True)
+
+# Create a clean CSV for the download
+csv_buffer = io.StringIO()
+audit_df.to_csv(csv_buffer, index=False)
+st.download_button(
+    label="📥 Download Executive Audit Report (CSV)",
+    data=csv_buffer.getvalue(),
+    file_name="SAR_Strategic_Audit.csv",
+    mime="text/csv",
+    use_container_width=True
+)
+
+st.markdown("<p style='text-align:center; color:#9CA3AF; font-size: 0.8rem;'>CONFIDENTIAL | PREPARED FOR BOARD REVIEW 2026</p>", unsafe_allow_html=True)
