@@ -2,28 +2,28 @@ import streamlit as st
 import pandas as pd
 import base64
 
-st.set_page_config(page_title="SAR ROI Scaler", layout="wide")
+st.set_page_config(page_title="SAR ROI Auditor", layout="wide")
 
 # --- DATA EXPORT ---
 def create_download_link(val1, val2, val3, df):
     report_text = f"SAR STRATEGIC ROI REPORT\n"
     report_text += f"-------------------------\n"
-    report_text += f"Legacy Total Cost: {val1}\n"
-    report_text += f"SAR Total Cost: {val2}\n"
+    report_text += f"Legacy Event Cost: {val1}\n"
+    report_text += f"SAR Event Cost: {val2}\n"
     report_text += f"Net Annual Position: {val3}\n\n"
     report_text += f"DETAILED BREAKDOWN:\n{df.to_string()}"
     b64 = base64.b64encode(report_text.encode()).decode()
     return f'<a href="data:file/txt;base64,{b64}" download="SAR_ROI_Report.txt" style="text-decoration:none;">📩 Download Full Audit Report</a>'
 
-st.title("🛰️ SAR Strategic ROI: Targeted Dispatch Auditor")
-st.markdown("### *Comparing 'Blind Search' vs. 'Targeted Repair Execution'*")
+st.title("🛰️ SAR Strategic ROI: Operational Efficiency")
+st.markdown("### *Targeted Dispatch vs. Manual Search Waste*")
 st.divider()
 
 # --- SIDEBAR: OPERATIONAL CONSTANTS ---
 with st.sidebar:
-    st.header("💰 1. SAR Investment")
+    st.header("💰 1. SAR Subscription")
     annual_sub = st.number_input("Annual SAR Subscription ($)", value=150000)
-    events_per_year = st.slider("Flood Events Observed per Year", 1, 15, 10)
+    events_per_year = st.slider("Flood Events Per Year", 1, 15, 10)
     
     st.divider()
     st.header("👥 2. Fleet & Labor Rates")
@@ -36,43 +36,48 @@ with st.sidebar:
     st.info(f"**Field Force Burn:** ${hourly_burn:,.0f}/hr")
 
 # --- MARGINAL COST CALCULATION ---
-current_data_share = annual_sub / events_per_year
+data_share = annual_sub / events_per_year
 
 col_left, col_right = st.columns(2)
 
 with col_left:
-    st.subheader("🔴 Legacy (Blind Response)")
-    t_search_hrs = st.number_input("Field Scouting/Search Hours", value=48, key="leg_search")
-    t_helo_costs = st.number_input("Aerial Recon Costs (Helo/Drone)", value=85000)
+    st.subheader("🔴 Legacy (Manual Search)")
     
+    with st.expander("🚁 Aerial Recon Details (Editable)", expanded=True):
+        helo_rate = st.number_input("Helicopter Rate ($/hr)", value=4500)
+        helo_count = st.number_input("Number of Helicopters", value=2)
+        helo_hrs = st.number_input("Flight Hours per Helo", value=8)
+        drone_fixed = st.number_input("Drone Team Fixed Cost ($)", value=15000)
+        total_aerial = (helo_rate * helo_count * helo_hrs) + drone_fixed
+        st.caption(f"Total Aerial per Event: ${total_aerial:,.0f}")
+
+    t_search_hrs = st.number_input("Field Scouting Hours", value=48, key="leg_search")
     t_total_assets = st.number_input("Total Assets in Flood Zone", value=500)
-    t_visit_cost = st.number_input("Cost per Physical Site Visit ($)", value=450)
-    
-    t_repair_hrs = st.number_input("Repair Execution Hours", value=96, key="leg_repair")
+    t_visit_cost = st.number_input("Cost per Site Visit ($)", value=450)
+    t_repair_hrs = st.number_input("Legacy Repair Hours", value=96, key="leg_repair")
     
     # Legacy Math
     legacy_search_labor = hourly_burn * t_search_hrs
     legacy_visits = t_total_assets * t_visit_cost
     legacy_repair_labor = hourly_burn * t_repair_hrs
-    legacy_total = legacy_search_labor + t_helo_costs + legacy_visits + legacy_repair_labor
+    legacy_total = legacy_search_labor + total_aerial + legacy_visits + legacy_repair_labor
 
 with col_right:
     st.subheader("🔵 SAR (Targeted Response)")
-    s_desk_hrs = st.number_input("Desk Review Hours (ID Wet Sites)", value=4, key="sar_desk")
-    s_wet_assets = st.number_input("Confirmed 'Wet' Assets (Targeted)", value=55)
+    st.info(f"📈 **Data Share:** At {events_per_year} events, your data cost is **${data_share:,.0f}/event**.")
     
-    # Targeted Logic
-    s_targeted_visits = s_wet_assets * t_visit_cost
+    s_desk_hrs = st.number_input("Desk Review Hours (ID Wet Sites)", value=4, key="sar_desk")
+    s_wet_assets = st.number_input("Confirmed 'Wet' Assets", value=55)
     s_repair_hrs = st.number_input("Targeted Repair Hours", value=72, key="sar_repair")
     
     # SAR Math
     sar_desk_labor = hourly_burn * s_desk_hrs
-    sar_visit_total = s_targeted_visits
+    sar_visits = s_wet_assets * t_visit_cost
     sar_repair_labor = hourly_burn * s_repair_hrs
-    # The variable data cost based on the slider
-    sar_total = current_data_share + sar_desk_labor + sar_visit_total + sar_repair_labor
+    # Aerial is $0 because SAR replaced the bird
+    sar_total = data_share + sar_desk_labor + sar_visits + sar_repair_labor
     
-    st.info(f"💡 **Targeted Gain:** By the {events_per_year}th event, your data cost is **${current_data_share:,.0f}**. You skipped **{t_total_assets - s_wet_assets}** dry sites.")
+    st.success(f"💡 **Remote Clearance:** You cleared **{int(t_total_assets - s_wet_assets)}** assets without leaving the desk.")
 
 # --- DASHBOARD ---
 st.divider()
@@ -81,26 +86,26 @@ m1, m2, m3 = st.columns(3)
 m1.metric("Legacy Cost / Event", f"${legacy_total:,.0f}")
 m2.metric("SAR Cost / Event", f"${sar_total:,.0f}", 
           delta=f"-${legacy_total - sar_total:,.0f}", delta_color="inverse")
-m3.metric("Data Cost per Event", f"${current_data_share:,.0f}")
+m3.metric("Annual ROI (Net)", f"${(legacy_total - sar_total) * events_per_year:,.0f}")
 
-# --- THE EFFICIENCY GRAPH ---
-st.subheader("The Subscription Advantage: Cost Per Event vs. Utilization")
+# --- THE EFFICIENCY CURVE ---
 
+st.subheader("Subscription Scalability")
 event_range = list(range(1, 16))
 cost_curve = [annual_sub / e for e in event_range]
 curve_df = pd.DataFrame({"Events": event_range, "Data Cost per Event ($)": cost_curve})
 st.line_chart(curve_df.set_index("Events"))
 
 # --- THE COMPARISON TABLE ---
-st.subheader("Final Phase Breakdown")
+st.subheader("Phase Comparison")
 comparison_df = pd.DataFrame({
-    "Operational Phase": ["Initial Scouting (Labor)", "Aerial Recon (Aerial Search)", "Site Visits (Truck Rolls)", "Repair Phase (Wrench Time)", "SAR Subscription Share"],
-    "Legacy Approach ($)": [f"${legacy_search_labor:,.0f}", f"${t_helo_costs:,.0f}", f"${legacy_visits:,.0f}", f"${legacy_repair_labor:,.0f}", "$0"],
-    "SAR Approach ($)": [f"${sar_desk_labor:,.0f}", "$0", f"${sar_visit_total:,.0f}", f"${sar_repair_labor:,.0f}", f"${current_data_share:,.0f}"]
+    "Phase": ["Field Scouting (Labor)", "Aerial Recon (Helo/Drone)", "Truck Rolls (Visits)", "Repair Work (Labor)", "SAR Data Share"],
+    "Legacy ($)": [f"${legacy_search_labor:,.0f}", f"${total_aerial:,.0f}", f"${legacy_visits:,.0f}", f"${legacy_repair_labor:,.0f}", "$0"],
+    "SAR ($)": [f"${sar_desk_labor:,.0f}", "$0 (Replaced)", f"${sar_visits:,.0f}", f"${sar_repair_labor:,.0f}", f"${data_share:,.0f}"]
 })
 st.table(comparison_df)
 
 # --- EXPORT ---
 st.markdown(create_download_link(f"${legacy_total:,.0f}", f"${sar_total:,.0f}", f"${(legacy_total - sar_total) * events_per_year:,.0f}", comparison_df), unsafe_allow_html=True)
 
-st.success(f"**Strategic Verdict:** SAR creates an **ROI of ${(legacy_total - sar_total):,.0f} per event**. By using the data {events_per_year} times, you drive the cost of information down to **${current_data_share:,.0f}** while the cost of manual search stays fixed.")
+st.success(f"**Strategic Verdict:** SAR replaces **${legacy_search_labor + total_aerial:,.0f}** in search waste and saves **${legacy_repair_labor - sar_repair_labor:,.0f}** in repair execution per event.")
