@@ -1,104 +1,69 @@
 import streamlit as st
 import pandas as pd
 
-# --- Page Config ---
-st.set_page_config(page_title="Utility SAR ROI Engine", layout="wide")
+st.set_page_config(page_title="Utility Hard Savings ROI", layout="wide")
 
-st.title("🛰️ Satellite vs. Traditional Response ROI")
-st.markdown("#### *Quantifying Operational & Regulatory Gains for Australian Utilities*")
+st.title("🛰️ Satellite Response: Hard Cost ROI")
+st.markdown("#### *Focus: Direct Budgetary Savings vs. Manual Operations*")
 
-# --- SIDEBAR: GLOBAL INPUTS ---
+# --- SIDEBAR: THE INVESTMENT ---
 with st.sidebar:
-    st.header("💰 Solution Investment")
-    # Manual entry for the satellite sub cost
-    annual_sub_cost = st.number_input("Annual Satellite Subscription (AUD)", value=150000, step=10000)
-    
-    st.header("⚡ Regulatory Context")
-    # Updated 2026 AER VCR Rate
-    vcr_rate = st.number_input("AER VCR Rate (AUD/MWh)", value=46500, help="Value of Customer Reliability (2026 Inflation Adjusted)")
-    
-    st.header("📅 Event Scale")
-    events_per_year = st.slider("Major Events per Year", 1, 10, 3)
+    st.header("💳 The Investment")
+    sat_annual_sub = st.number_input("Annual Satellite Subscription (AUD)", value=150000)
+    events_per_year = st.slider("Events per Year", 1, 10, 3)
 
-# --- TABS FOR CUSTOMER INPUTS ---
-tab1, tab2, tab3 = st.tabs(["Field Operations", "The Recon Gap", "Economic & Compliance"])
+# --- INPUTS: THE "CASH" LEVERS ---
+t1, t2 = st.tabs(["Field & Aerial Savings", "Compliance & Admin"])
 
-with tab1:
-    c1, c2 = st.columns(2)
-    with c1:
-        st.subheader("Labor Costs")
-        crew_day_rate = st.number_input("Crew Day Rate (AUD)", value=3200, help="Includes labor, vehicle, and equipment.")
-        num_crews = st.number_input("Crews Deployed per Event", value=15)
-    with c2:
-        st.subheader("Efficiency")
-        total_assets = st.number_input("Assets to Inspect", value=1200)
-        wasted_rolls_pct = st.slider("Current 'Wasted' Truck Rolls (%)", 0.0, 1.0, 0.7, help="% of sites visited that end up having NO damage.")
+with t1:
+    col1, col2 = st.columns(2)
+    with col1:
+        st.subheader("Field Ops (Triage)")
+        total_sites = st.number_input("Total Sites in Disaster Zone", value=1200)
+        waste_rate = st.slider("Wasted Visit Rate (%)", 0.0, 1.0, 0.75, help="% of sites checked that are found to be 'OK'.")
+        cost_per_visit = st.number_input("Cost per Emergency Visit (AUD)", value=350)
+    with col2:
+        st.subheader("Aerial Surveys")
+        helo_hrs = st.number_input("Helicopter Hours per Event", value=12)
+        helo_rate = st.number_input("Helicopter Rate (AUD/hr)", value=4500)
 
-with tab2:
-    c3, c4 = st.columns(2)
-    with c3:
-        st.subheader("Traditional Recon")
-        trad_recon_hrs = st.number_input("Hours to 'Ground Truth' (Manual)", value=48, help="Time spent waiting for weather + manual scouting.")
-    with c4:
-        st.subheader("Satellite Recon")
-        sat_recon_hrs = st.number_input("Hours to 'Ground Truth' (SAR)", value=12, help="Time from event trigger to Change Detection map.")
+with t2:
+    col3, col4 = st.columns(2)
+    with col3:
+        st.subheader("Compliance (DRFA)")
+        admin_hrs_saved = st.number_input("Audit Hours Saved per Event", value=120)
+        internal_rate = st.number_input("Staff Hourly Rate (AUD)", value=165)
+    with col4:
+        st.subheader("Logistics")
+        gen_hire_avoided = st.number_input("Avoided Temp Power/Gen Costs", value=25000)
 
-with tab3:
-    c5, c6 = st.columns(2)
-    with c5:
-        st.subheader("Network Load")
-        avg_load_mw = st.number_input("Avg. Load Affected (MW)", value=15.0)
-    with c6:
-        st.subheader("Audit & Compliance")
-        audit_hrs_saved = st.number_input("Admin Hours Saved/Event", value=80, help="Reduction in manual photo-matching for DRFA claims.")
-        audit_rate = st.number_input("Internal Hourly Rate (AUD)", value=150)
+# --- THE HARD MATH ---
+# 1. Labor Savings
+labor_savings = (total_sites * waste_rate) * cost_per_site_visit if 'cost_per_site_visit' in locals() else (total_sites * waste_rate) * cost_per_visit
+# 2. Aerial Savings
+aerial_savings = helo_hrs * helo_rate
+# 3. Admin/Audit
+admin_savings = admin_hrs_saved * internal_rate
+# 4. Total per Event
+event_total = labor_savings + aerial_savings + admin_savings + gen_hire_avoided
+# 5. Annual Total
+annual_hard_savings = event_total * events_per_year
+net_benefit = annual_hard_savings - sat_annual_sub
 
-# --- CALCULATIONS ---
-
-# 1. Field Labor Savings (The Triage Lever)
-# Traditional: Inspect all
-days_trad = total_assets / (12 * num_crews) # Assuming 12 sites/day/crew baseline
-labor_cost_trad = days_trad * crew_day_rate * num_crews
-
-# Satellite: Skip the "Wasted" ones
-assets_with_change = total_assets * (1 - wasted_rolls_pct)
-days_sat = assets_with_change / (12 * num_crews)
-labor_cost_sat = days_sat * crew_day_rate * num_crews
-field_savings = (labor_cost_trad - labor_cost_sat)
-
-# 2. VCR Savings (The Regulatory Lever)
-lead_time_gain = trad_recon_hrs - sat_recon_hrs
-vcr_savings = lead_time_gain * avg_load_mw * vcr_rate
-
-# 3. Compliance Savings
-admin_savings = audit_hrs_saved * audit_rate
-
-# 4. FINAL ROI
-total_savings_event = field_savings + vcr_savings + admin_savings
-total_annual_savings = total_savings_event * events_per_year
-net_annual_benefit = total_annual_savings - annual_sub_cost
-roi_ratio = (net_annual_benefit / annual_sub_cost) if annual_sub_cost > 0 else 0
-
-# --- RESULTS DASHBOARD ---
+# --- DASHBOARD ---
 st.divider()
-res_col1, res_col2, res_col3 = st.columns(3)
 
-with res_col1:
-    st.metric("Net Annual Benefit", f"AUD ${net_annual_benefit:,.0f}")
-with res_col2:
-    st.metric("Annual ROI", f"{roi_ratio:.1%}")
-with res_col3:
-    st.metric("Total Lead Time Gained", f"{lead_time_gain} Hours")
+m1, m2, m3 = st.columns(3)
+m1.metric("Net Cash Benefit (Annual)", f"AUD ${net_benefit:,.0f}")
+m2.metric("Savings per Event", f"AUD ${event_total:,.0f}")
+m3.metric("Payback Period", f"{(sat_annual_sub / event_total) if event_total > 0 else 0:.1f} Events")
 
-# Visualization
-st.subheader("Where the Value Comes From (Per Event)")
-chart_data = pd.DataFrame({
-    "Category": ["Field Labor", "VCR Protection", "Compliance"],
-    "Value (AUD)": [field_savings, vcr_savings, admin_savings]
+st.divider()
+st.subheader("Hard Savings Breakdown")
+breakdown = pd.DataFrame({
+    "Category": ["Avoided Field Waste", "Aerial Survey Replacement", "Compliance Efficiency", "Logistics/Generators"],
+    "Savings (AUD)": [labor_savings, aerial_savings, admin_savings, gen_hire_avoided]
 })
-st.bar_chart(chart_data, x="Category", y="Value (AUD)", color="#005299")
+st.bar_chart(breakdown, x="Category", y="Savings (AUD)", color="#2E8B57")
 
-st.info(f"""
-**Business Case Logic:** By investing **${annual_sub_cost:,.0f}**, the utility removes 
-**${field_savings:,.0f}** in wasted field labor per event and protects **${vcr_savings:,.0f}** in community economic value by restoring power **{lead_time_gain} hours sooner**.
-""")
+st.info(f"**The CFO Pitch:** This investment pays for itself within **{((sat_annual_sub / event_total) if event_total > 0 else 0):.1f}** major events. By using SAR to bypass **{total_sites * waste_rate:,.0f}** unnecessary inspections, we recover the subscription cost through field efficiency alone.")
