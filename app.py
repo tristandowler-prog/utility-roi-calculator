@@ -21,10 +21,10 @@ with st.sidebar:
     
     st.header("🚁 3. Legacy Search Rates")
     helo_hr = st.number_input("Helicopter Rate ($/hr)", value=4500)
-    drone_day = st.number_input("Drone Team Rate ($/day)", value=2500)
+    drone_day_rate = st.number_input("Drone Team Rate ($/day)", value=2500)
 
 # --- THE "ACCOUNTING" MATH ---
-# This is the fix: The data cost is distributed across the events
+# Fixed Sub divided by events. 150k / 2 = 75k. 150k / 5 = 30k.
 data_cost_per_event = annual_sub / events_per_year
 
 num_vehicles = total_people / 2.5
@@ -37,8 +37,8 @@ with col_left:
     st.subheader("🔴 Legacy (Manual Search)")
     t_wait = st.number_input("Wait Time (Hrs)", value=48)
     t_assets = st.number_input("Total Assets in Zone", value=2000)
-    t_helo = st.number_input("Helo Search Hours", value=15)
-    t_drone = st.number_input("Drone Search Days", value=12)
+    t_helo_hrs = st.number_input("Helo Search Hours", value=15)
+    t_drone_days = st.number_input("Drone Search Days", value=12)
 
 with col_right:
     st.subheader("🔵 ICEYE (Observed Truth)")
@@ -46,19 +46,19 @@ with col_right:
     s_assets_wet = st.number_input("Confirmed Wet Assets", value=140)
     st.info(f"💡 **Data Cost:** Your ${annual_sub:,.0f} sub currently costs **${data_cost_per_event:,.0f} per event**.")
 
-# --- THE CALCULATIONS ---
+# --- THE CALCULATIONS (STRICT VARIABLE NAMING) ---
 
 # 1. LEGACY TOTAL (Per Event)
-t_labor_cost = hourly_burn * t_wait
-t_aerial_cost = (t_helo * helo_hr) + (t_drone * drone_day)
+t_standby_cost = hourly_burn * t_wait
+t_recon_cost = (t_helo_hrs * helo_hr) + (t_drone_days * drone_day_rate)
 t_visit_cost = t_assets * 350
-t_event_total = t_labor_cost + t_aerial_cost + t_visit_cost
+t_event_total = t_standby_cost + t_recon_cost + t_visit_cost
 
 # 2. SAR TOTAL (Per Event)
-s_labor_cost = hourly_burn * s_wait
+s_standby_cost = hourly_burn * s_wait
 s_visit_cost = s_assets_wet * 350
-# Total SAR cost includes the slice of the subscription
-s_event_total = s_labor_cost + s_visit_cost + data_cost_per_event
+# Total SAR cost includes the shared slice of the subscription
+s_event_total = s_standby_cost + s_visit_cost + data_cost_per_event
 
 # --- DASHBOARD ---
 st.divider()
@@ -69,18 +69,23 @@ m1.metric("Legacy Cost / Event", f"${t_event_total:,.0f}")
 m2.metric("True SAR Cost / Event", f"${s_event_total:,.0f}", 
           delta=f"-${t_event_total - s_event_total:,.0f}", delta_color="inverse")
 
-annual_savings = (t_event_total - s_event_total) * events_per_year
-m3.metric("Annual Net Position", f"${annual_savings:,.0f}", help="Total yearly savings after paying the sub.")
+annual_net_benefit = (t_event_total - s_event_total) * events_per_year
+m3.metric("Net Annual Position", f"${annual_net_benefit:,.0f}", help="Total yearly savings after paying the sub.")
 
 # --- TABLE ---
 st.subheader("Cost Breakdown (Per Event)")
 comparison_data = {
     "Expense Category": ["Field Standby (Wages)", "Aerial Search (Helo/Drone)", "Physical Site Inspections", "Satellite Data (Subscription Share)"],
-    "Legacy Method": [f"${t_labor_cost:,.0f}", f"${t_aerial_cost:,.0f}", f"${t_visit_cost:,.0f}", "$0"],
-    "ICEYE Method": [f"${s_labor_cost:,.0f}", "$0 (Replaced)", f"${s_visit_total:,.0f}", f"${data_cost_per_event:,.0f}"]
+    "Legacy Method": [f"${t_standby_cost:,.0f}", f"${t_recon_cost:,.0f}", f"${t_visit_cost:,.0f}", "$0"],
+    "ICEYE Method": [f"${s_standby_cost:,.0f}", "$0 (Replaced)", f"${s_visit_cost:,.0f}", f"${data_cost_per_event:,.0f}"]
 }
 st.table(pd.DataFrame(comparison_data))
 
 # --- CHART ---
 st.subheader("Cost Comparison per Event")
-chart_
+chart_df = pd.DataFrame({
+    "Category": ["Standby", "Recon", "Inspections", "Data Cost"],
+    "Legacy": [t_standby_cost, t_recon_cost, t_visit_cost, 0],
+    "ICEYE": [s_standby_cost, 0, s_visit_cost, data_cost_per_event]
+})
+st.bar_chart(chart_df.set_index("Category"))
