@@ -39,7 +39,6 @@ with st.sidebar:
     drone_rate = st.number_input("Drone Team Rate ($/day)", value=2500)
 
 # --- THE PURE MATH ---
-# $150,000 / 10 = $15,000
 data_cost_per_event = annual_sub / events_per_year
 hourly_burn = (total_people * labor_rate) + (num_cars * car_rate)
 
@@ -63,5 +62,49 @@ with col_right:
     st.info(f"Subscription (${annual_sub:,.0f}) ÷ Events ({events_per_year}) = **${sar_total:,.0f} per event**")
     st.write("*(SAR replaces all manual field scouting and aerial recon costs)*")
 
-# --- DASHBOARD (SYNTAX AUDITED) ---
+# --- DASHBOARD ---
+st.divider()
+m1, m2, m3 = st.columns(3)
 
+m_total_str = f"${manual_total:,.0f}"
+s_total_str = f"${sar_total:,.0f}"
+delta_str = f"-${manual_total - sar_total:,.0f}"
+annual_net_str = f"${(manual_total * events_per_year) - annual_sub:,.0f}"
+
+m1.metric("Manual Search Cost / Event", m_total_str)
+m2.metric("True SAR Cost / Event", s_total_str, delta=delta_str, delta_color="inverse")
+m3.metric("Net Annual Savings", annual_net_str)
+
+# --- THE BREAKDOWN TABLE ---
+st.subheader("Cost Comparison per Event")
+comparison_df = pd.DataFrame({
+    "Category": ["Field Search Labor", "Aerial Search", "SAR Data Share"],
+    "Manual Search ($)": [f"${manual_labor:,.0f}", f"${manual_aerial:,.0f}", "$0"],
+    "SAR Strategy ($)": ["$0 (Replaced)", "$0 (Replaced)", f"${sar_total:,.0f}"]
+})
+st.table(comparison_df)
+
+# --- EXPORT LINK ---
+st.markdown(create_download_link(m_total_str, s_total_str, annual_net_str, comparison_df), unsafe_allow_html=True)
+
+# --- CHART ---
+st.subheader("Operational Spend Analysis")
+chart_df = pd.DataFrame({
+    "Category": ["Manual Labor", "Aerial Recon", "SAR Data Sub"],
+    "Manual": [manual_labor, manual_aerial, 0],
+    "SAR": [0, 0, sar_total]
+})
+st.bar_chart(chart_df.set_index("Category"))
+
+# --- VALUE REALIZATION (THE COMPARISON AT THE BOTTOM) ---
+st.divider()
+st.subheader("🎯 Value Realization")
+v1, v2 = st.columns(2)
+
+labor_saved = manual_labor
+aerial_saved = manual_aerial
+
+v1.markdown(f"**Field Labor Reallocation:** \nBy using SAR, you stop spending **${labor_saved:,.0f}** per event on 'looking' and can move those crews to 'fixing'.")
+v2.markdown(f"**Aerial Recon Elimination:** \nYou eliminate **${aerial_saved:,.0f}** in helicopter and drone contracts per event by using satellite truth.")
+
+st.success(f"**Final Verdict:** SAR technology replaces **{m_total_str}** in manual search waste per event with a **{s_total_str}** subscription share.")
