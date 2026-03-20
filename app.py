@@ -1,9 +1,16 @@
 import streamlit as st
 import numpy as np
 import pandas as pd
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.pagesizes import A4
+
+# --- SAFE IMPORT ---
+try:
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image
+    PDF_ENABLED = True
+except ModuleNotFoundError:
+    PDF_ENABLED = False
 
 # --- PAGE SETUP ---
 st.set_page_config(page_title="Flood Intelligence | Boardroom Engine", layout="wide")
@@ -11,6 +18,9 @@ st.set_page_config(page_title="Flood Intelligence | Boardroom Engine", layout="w
 # --- SIDEBAR ---
 with st.sidebar:
     st.title("⚙️ Customer Inputs (AU Utility Calibrated)")
+
+    customer_name = st.text_input("Customer Name", "AGL Energy")
+    uploaded_logo = st.file_uploader("Upload Company Logo", type=["png","jpg","jpeg"])
 
     st.markdown("### 📡 Subscription")
     sar_sub = st.number_input("Annual Subscription ($)", value=150000)
@@ -77,6 +87,8 @@ c3.metric("ROI", f"{roi:,.0f}%")
 c4.metric("Payback", f"{payback_months:.1f} mo")
 
 st.success(f"""
+Prepared for: {customer_name}
+
 Annual Net Benefit: ${net_benefit:,.0f}
 
 Subscription:
@@ -95,15 +107,25 @@ def generate_pdf():
     styles = getSampleStyleSheet()
 
     content = []
+
+    # Logo
+    if uploaded_logo is not None:
+        content.append(Image(uploaded_logo, width=120, height=60))
+
     content.append(Paragraph("Flood Intelligence Business Case", styles['Title']))
     content.append(Spacer(1, 12))
 
-    content.append(Paragraph(f"Annual Net Benefit: ${net_benefit:,.0f}", styles['Normal']))
-    content.append(Paragraph(f"ROI: {roi:.0f}%", styles['Normal']))
-    content.append(Paragraph(f"Payback Period: {payback_months:.1f} months", styles['Normal']))
+    content.append(Paragraph(f"Prepared for: {customer_name}", styles['Normal']))
     content.append(Spacer(1, 12))
 
-    content.append(Paragraph("Key Assumptions:", styles['Heading2']))
+    content.append(Paragraph("Executive Summary", styles['Heading2']))
+    content.append(Paragraph(
+        f"This analysis demonstrates an annual net benefit of ${net_benefit:,.0f}, with ROI of {roi:.0f}% and payback in {payback_months:.1f} months.",
+        styles['Normal']
+    ))
+
+    content.append(Spacer(1, 12))
+    content.append(Paragraph("Key Assumptions", styles['Heading2']))
     content.append(Paragraph(f"Assets: {total_assets}", styles['Normal']))
     content.append(Paragraph(f"Events/year: {events_per_year}", styles['Normal']))
     content.append(Paragraph(f"Crew cost: ${crew_cost}", styles['Normal']))
@@ -111,7 +133,11 @@ def generate_pdf():
     doc.build(content)
     return "/mnt/data/flood_roi_report.pdf"
 
-if st.button("📄 Generate Board PDF"):
-    file_path = generate_pdf()
-    with open(file_path, "rb") as f:
-        st.download_button("Download Report", f, file_name="Flood_ROI_Report.pdf")
+# --- BUTTON ---
+if PDF_ENABLED:
+    if st.button("📄 Generate Board PDF"):
+        file_path = generate_pdf()
+        with open(file_path, "rb") as f:
+            st.download_button("Download Report", f, file_name="Flood_ROI_Report.pdf")
+else:
+    st.warning("PDF generation unavailable in this environment.")
