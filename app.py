@@ -1,21 +1,21 @@
 import streamlit as st
 import pandas as pd
 
-st.set_page_config(page_title="Pure SAR Utility ROI", layout="wide")
+st.set_page_config(page_title="ICEYE Utility ROI", layout="wide")
 
-st.title("🛰️ Satellite Flood ROI: Pure SAR vs. Legacy Recon")
-st.markdown("### *Eliminating Helicopters, Drones, and Information Darkness*")
+st.title("🛰️ ICEYE SAR: The 'Universal Truth' ROI Engine")
+st.markdown("### *Compare Manual 'Search & Rescue' vs. Satellite-Directed Recovery*")
 st.divider()
 
-# --- SIDEBAR: THE INVESTMENT ---
+# --- SIDEBAR: UNIT COSTS ---
 with st.sidebar:
-    st.header("🏢 1. Satellite Investment")
-    annual_sub = st.number_input("Annual SAR Subscription ($)", value=150000)
-    events_per_year = st.slider("Major Flood Events / Year", 1, 10, 2)
+    st.header("💰 1. Annual SAR Investment")
+    annual_sub = st.number_input("Annual Subscription ($)", value=150000)
+    events_per_year = st.slider("Flood Events / Year", 1, 10, 2)
     
     st.divider()
-    st.header("👥 2. Field Force Scale")
-    total_people = st.number_input("Total Personnel Dispatched", value=120)
+    st.header("👥 2. Field Force Costs")
+    total_people = st.number_input("Total Personnel", value=120)
     person_hr = st.number_input("Labor Rate ($/hr)", value=175)
     vehicle_hr = st.number_input("Fleet Rate ($/hr)", value=55)
     
@@ -23,64 +23,61 @@ with st.sidebar:
     helo_hr = st.number_input("Helicopter Rate ($/hr)", value=4500)
     drone_team_day = st.number_input("Drone Team Rate ($/day)", value=2500)
 
-# --- CALCULATIONS ---
-# Amortize the sub across the events
-sub_per_event = annual_sub / events_per_year
+# --- SYSTEM LOGIC ---
 num_vehicles = total_people / 2.5
+hourly_burn = (total_people * person_hr) + (num_vehicles * vehicle_hr)
 
 # --- SCENARIOS ---
 col_left, col_right = st.columns(2)
 
 with col_left:
-    st.subheader("🔴 Legacy Response (Manual/Aerial)")
-    t_wait = st.number_input("Wait for Weather/Access (Hrs)", value=48)
-    t_assets = st.number_input("Total Assets in Flood Zone", value=2000)
-    t_helo_hrs = st.number_input("Manual Helo Hours", value=15)
-    t_drone_days = st.number_input("Manual Drone Days", value=12)
+    st.subheader("🔴 Legacy 'Search' Method")
+    t_wait = st.number_input("Wait Time for Air/Roads (Hrs)", value=48, help="Waiting for clouds to clear or roads to open.")
+    t_assets = st.number_input("Assets to Inspect Manually", value=2000, help="Total poles/transformers in the flood zone.")
+    t_helo_hrs = st.number_input("Helicopter Search Hours", value=15)
+    t_drone_days = st.number_input("Drone Search Days", value=12)
 
 with col_right:
-    st.subheader("🔵 Pure SAR Response (ICEYE)")
-    s_wait = st.number_input("SAR Delivery Time (Hrs)", value=8)
-    s_assets_verified = st.number_input("SAR-Verified Damage Sites", value=150)
-    st.info("💡 **Zero Recon Cost:** SAR replaces all Helicopter and Drone discovery flights.")
+    st.subheader("🔵 ICEYE 'Directed' Method")
+    s_wait = st.number_input("Time to SAR Flood Map (Hrs)", value=8, help="ICEYE delivery window.")
+    # We assume only ~7% of assets actually require a truck roll based on depth data
+    s_hit_rate = st.slider("% of Assets Impacted (via SAR)", 1, 20, 7)
+    s_assets = (t_assets * s_hit_rate) / 100
+    st.info(f"💡 **SAR Logic:** ICEYE depth data identifies only **{int(s_assets)}** assets as flooded. The other **{int(t_assets - s_assets)}** are cleared remotely.")
 
 # --- THE MATH ---
-# 1. Legacy Totals
-t_standby = (total_people * person_hr + num_vehicles * vehicle_hr) * t_wait
-t_inspect = t_assets * 350
+# Legacy (The expensive way)
+t_standby = hourly_burn * t_wait
 t_aerial = (t_helo_hrs * helo_hr) + (t_drone_days * drone_team_day)
-t_total_event = t_standby + t_inspect + t_aerial
+t_inspect = t_assets * 350 # Standard cost for a manual physical check
+t_total_event = t_standby + t_aerial + t_inspect
 
-# 2. SAR Totals (Aerial is $0 because SAR is the recon tool)
-s_standby = (total_people * person_hr + num_vehicles * vehicle_hr) * s_wait
-s_inspect = s_assets_verified * 350
-s_aerial_cost = 0 
-s_total_event = s_standby + s_inspect + s_aerial_cost + sub_per_event
+# SAR (The directed way)
+s_standby = hourly_burn * s_wait
+s_aerial = 0 # REPLACED BY SAR
+s_inspect = s_assets * 350 # Only visiting the 'Hit List' from ICEYE
+s_total_event = s_standby + s_inspect
 
-# --- RESULTS DASHBOARD ---
+# --- DASHBOARD ---
 st.divider()
 m1, m2, m3 = st.columns(3)
-m1.metric("Legacy Cost / Event", f"${t_total_event:,.0f}")
-m2.metric("True SAR Cost / Event", f"${s_total_event:,.0f}", 
-          delta=f"-${t_total_event - s_total_event:,.0f}", delta_color="inverse")
-m3.metric("Annual Net Benefit", f"${(t_total_event - s_total_event) * events_per_year:,.0f}")
+
+# 1. Cost per event (Operational only)
+m1.metric("Legacy Ops / Event", f"${t_total_event:,.0f}")
+m2.metric("SAR Ops / Event", f"${s_total_event:,.0f}", delta=f"-${t_total_event - s_total_event:,.0f}", delta_color="inverse")
+
+# 2. Total Annual Position (Savings * Events - Sub)
+annual_savings = (t_total_event - s_total_event) * events_per_year
+net_roi = annual_savings - annual_sub
+m3.metric("Net Annual Position", f"${net_roi:,.0f}", help="Total savings across all events minus the sub cost.")
 
 # --- COMPARISON TABLE ---
-st.subheader("Cost Comparison Table (Per Event)")
-comparison_df = pd.DataFrame({
-    "Category": ["Personnel Standby (Wait Time)", "Aerial Recon (Helo/Drones)", "Field Inspections (Truck Rolls)", "Satellite Data Cost"],
-    "Legacy Method ($)": [f"${t_standby:,.0f}", f"${t_aerial:,.0f}", f"${t_inspect:,.0f}", "$0"],
-    "Pure SAR Method ($)": [f"${s_standby:,.0f}", "$0 (Replaced by SAR)", f"${s_inspect:,.0f}", f"${sub_per_event:,.0f}"]
-})
-st.table(comparison_df)
+st.subheader("Operational Impact (Per Event)")
+data = {
+    "Expense": ["Field Standby (Wait Time)", "Aerial Recon (Helo/Drone)", "Truck Rolls (Site Visits)"],
+    "Legacy Method": [f"${t_standby:,.0f}", f"${t_aerial:,.0f}", f"${t_inspect:,.0f}"],
+    "ICEYE Method": [f"${s_standby:,.0f}", "$0 (Replaced)", f"${s_inspect:,.0f}"]
+}
+st.table(pd.DataFrame(data))
 
-# --- BAR CHART ---
-st.subheader("Operational Spend: Legacy vs. Pure SAR")
-chart_df = pd.DataFrame({
-    "Category": ["Standby", "Recon", "Inspections"],
-    "Legacy": [t_standby, t_aerial, t_inspect],
-    "Pure SAR": [s_standby, 0, s_inspect]
-})
-st.bar_chart(chart_df.set_index("Category"))
-
-st.success(f"By eliminating **${t_aerial:,.0f}** in aerial recon and avoiding **{t_assets - s_assets_verified}** unnecessary truck rolls, the SAR solution creates a hard-cost saving of **${t_total_event - s_total_event:,.0f}** per event.")
+st.success(f"**Strategy:** By using ICEYE to clear **{int(t_assets - s_assets)}** assets without sending a truck, you save **${t_inspect - s_inspect:,.0f}** in field labor alone per event.")
