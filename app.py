@@ -1,146 +1,126 @@
 import streamlit as st
-import pandas as pd
 import numpy as np
+import pandas as pd
 
 # --- PAGE SETUP ---
-st.set_page_config(page_title="Flood Solutions | Continuity Audit", layout="wide")
+st.set_page_config(page_title="Flood Intelligence | Command Platform", layout="wide")
 
-# --- EXECUTIVE "GLASS" UI ---
+# --- STYLE ---
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap');
-    .stApp {
-        background: linear-gradient(rgba(10, 22, 35, 0.96), rgba(10, 22, 35, 0.96)), 
-                    url("https://share.google/KpUEQWOjnCWCGErW5");
-        background-size: cover; background-attachment: fixed; color: #F1F5F9;
-    }
-    .value-blade {
-        background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.1);
-        border-left: 5px solid #00D1FF; padding: 22px; margin-bottom: 20px; border-radius: 4px; backdrop-filter: blur(15px);
-    }
-    .metric-title { font-size: 0.7rem; font-weight: 700; color: #94A3B8; text-transform: uppercase; letter-spacing: 2px; }
-    .metric-value { font-size: 2.4rem; font-weight: 800; color: #FFFFFF; line-height: 1.1; }
-    .metric-sub { font-size: 0.85rem; color: #00D1FF; font-weight: 600; margin-top: 4px; }
+.stApp {
+    background: #0A1623;
+    color: #F1F5F9;
+}
+.metric {
+    padding: 20px;
+    border-left: 4px solid #00D1FF;
+    background: rgba(255,255,255,0.03);
+    margin-bottom: 15px;
+}
 </style>
 """, unsafe_allow_html=True)
 
-# --- SIDEBAR: STRATEGIC INPUT LAYER ---
+# --- SIDEBAR ---
 with st.sidebar:
-    st.markdown("## 🛡️ Strategic Input Layer")
-    st.info("Calibrated to 2026 Regulatory VCR/STPIS and Labor baselines.")
-    
-    with st.expander("📡 SATELLITE DATA SERVICE", expanded=True):
-        sar_sub = st.number_input("Annual Data Subscription ($)", value=150000)
-        data_latency = st.select_slider("Data Delivery Window (Latency)", options=["6h", "12h", "24h", "48h"], value="6h")
+    st.title("⚙️ Scenario Builder")
 
-    with st.expander("📐 NETWORK & EXPOSURE", expanded=True):
-        total_assets = st.number_input("Total Assets in Network", value=1200)
-        inundation_rate = st.slider("Historical Impact Rate (%)", 5, 100, 20)
-        annual_events = st.slider("Significant Flood Events / Year", 1, 10, 4)
+    scenario = st.selectbox("Event Type", [
+        "Urban Flood",
+        "Regional Storm",
+        "Severe Black Swan"
+    ])
 
-    st.divider()
+    latency = st.select_slider("Satellite Latency", ["6h","12h","24h","48h"], value="12h")
 
-    st.markdown("### 🚛 Operational Modules")
-    enable_aerial = st.toggle("Aerial Reconnaissance", value=True)
-    enable_field = st.toggle("Field Force Optimization", value=True)
-    enable_double_trip = st.toggle("Eliminate 'Double-Trip' Penalty", value=True)
-    enable_regulatory = st.toggle("Regulatory (STPIS) Liability", value=True)
+    total_assets = st.number_input("Total Network Assets", value=1200)
+    inundation = st.slider("% Assets Impacted", 1, 100, 25)
 
-    if enable_field or enable_double_trip:
-        with st.expander("🛠️ Labor & Gear Assumptions"):
-            crew_cost = st.number_input("Fully Burdened Crew Rate ($)", value=850)
-            double_trip_risk = st.slider("Mismatched Gear Risk (%)", 0, 100, 45)
-            recovery_boost = st.slider("Targeted Recovery Gain (Hrs/Asset)", 1, 12, 4)
-    
-    if enable_regulatory:
-        with st.expander("⚖️ STPIS Assumptions"):
-            stpis_penalty = st.number_input("Penalty Rate ($/Min/Asset)", value=125)
+    crew_cost = st.number_input("Crew Dispatch Cost ($)", value=850)
+    events_per_year = st.slider("Events / Year", 1, 10, 4)
 
-# --- THE VALUE ENGINE ---
-exposed_assets = int(total_assets * (inundation_rate / 100))
-dry_assets = total_assets - exposed_assets
+# --- SCENARIO LOGIC ---
+scenario_multiplier = {
+    "Urban Flood": 1.0,
+    "Regional Storm": 1.4,
+    "Severe Black Swan": 2.2
+}[scenario]
 
-# Latency Factor (Decay of value)
-latency_eff = {"6h": 1.0, "12h": 0.82, "24h": 0.55, "48h": 0.20}[data_latency]
-base_search_time = 44 
-effective_time_saved = base_search_time * latency_eff
+latency_factor = {"6h":1.0,"12h":0.8,"24h":0.5,"48h":0.2}[latency]
 
-# Calculations
-leg_aerial = 85000 if enable_aerial else 0
-leg_search_waste = (dry_assets * crew_cost) if enable_field else 0
-leg_double_trip = (exposed_assets * (double_trip_risk/100) * crew_cost) if enable_double_trip else 0
-leg_stpis = (exposed_assets * stpis_penalty * ((effective_time_saved + recovery_boost) * 60)) if enable_regulatory else 0
+exposed_assets = int(total_assets * (inundation/100))
+blind_dispatch_rate = (1 - latency_factor) * 100
 
-legacy_event_total = leg_aerial + leg_search_waste + leg_double_trip + leg_stpis
-sar_event_total = (exposed_assets * crew_cost) 
+# --- DECISION ENGINE ---
+base_decision_delay = 40
+improved_decision_time = base_decision_delay * latency_factor
 
-annual_net_benefit = (legacy_event_total * annual_events) - (sar_event_total * annual_events) - sar_sub
-roi_ratio = (annual_net_benefit / sar_sub) * 100 if sar_sub > 0 else 0
+time_saved = base_decision_delay - improved_decision_time
 
-# --- MAIN INTERFACE ---
-st.markdown("<p style='color: #00D1FF; font-weight: 700; letter-spacing: 2px;'>FLOOD SOLUTIONS: AUDIT REPORT</p>", unsafe_allow_html=True)
-st.title("Strategic Infrastructure Recovery Benchmark")
-st.markdown(f"#### Annualized Strategic Impact over {annual_events} Flood Events")
+blind_dispatches = int(exposed_assets * (blind_dispatch_rate/100))
 
-# KPI STRIP
+cost_blind_dispatch = blind_dispatches * crew_cost * scenario_multiplier
+
+# --- ROI SIMULATION ---
+simulations = np.random.normal(loc=events_per_year, scale=1.2, size=500)
+annual_savings_sim = simulations * cost_blind_dispatch
+
+p50 = np.percentile(annual_savings_sim, 50)
+p80 = np.percentile(annual_savings_sim, 80)
+
+# --- HEADER ---
+st.title("Flood Intelligence Command Platform")
+st.subheader("From Reactive Response → Real-Time Decision Advantage")
+
+# --- KPI ROW ---
 c1, c2, c3, c4 = st.columns(4)
+
 with c1:
-    st.markdown(f'<div class="value-blade"><p class="metric-title">Assets Exposed</p><p class="metric-value">{exposed_assets:,}</p><p class="metric-sub">Targeted Recovery</p></div>', unsafe_allow_html=True)
+    st.markdown(f"<div class='metric'><b>Network Visibility</b><br><h2>{latency_factor*100:.0f}%</h2></div>", unsafe_allow_html=True)
+
 with c2:
-    st.markdown(f'<div class="value-blade"><p class="metric-title">Lead-Time Gain</p><p class="metric-value">{effective_time_saved:.1f}h</p><p class="metric-sub">Search Phase Offset</p></div>', unsafe_allow_html=True)
+    st.markdown(f"<div class='metric'><b>Blind Dispatch Rate</b><br><h2>{blind_dispatch_rate:.0f}%</h2></div>", unsafe_allow_html=True)
+
 with c3:
-    st.markdown(f'<div class="value-blade"><p class="metric-title">Annual ROI</p><p class="metric-value">{roi_ratio:,.0f}%</p><p class="metric-sub">Post-Subscription</p></div>', unsafe_allow_html=True)
+    st.markdown(f"<div class='metric'><b>Time to Decision</b><br><h2>{improved_decision_time:.1f} min</h2></div>", unsafe_allow_html=True)
+
 with c4:
-    st.markdown(f'<div class="value-blade"><p class="metric-title">Value Protected</p><p class="metric-value">${annual_net_benefit:,.0f}</p><p class="metric-sub">Annual Risk Avoidance</p></div>', unsafe_allow_html=True)
+    st.markdown(f"<div class='metric'><b>Assets Impacted</b><br><h2>{exposed_assets}</h2></div>", unsafe_allow_html=True)
 
-# THE GAP ANALYSIS
-st.markdown("### 📊 Restoration Efficiency: Legacy vs. Targeted Response")
-chart_data = pd.DataFrame({
-    "Strategy": ["Legacy (Blind Search)", "Targeted Flood Solution"],
-    "Annual Operational Cost ($)": [(legacy_event_total * annual_events), (sar_event_total * annual_events + sar_sub)]
-})
-st.bar_chart(chart_data, x="Strategy", y="Annual Operational Cost ($)", color="#00D1FF")
+# --- NARRATIVE OUTPUT ---
+st.success(f"""
+With {latency} satellite latency, your control room operates at {latency_factor*100:.0f}% visibility.
 
-# STRATEGIC PILLARS
+This reduces blind dispatches by {blind_dispatch_rate:.0f}% and accelerates first decision-making by {time_saved:.1f} minutes.
+
+Estimated avoided cost per event: ${cost_blind_dispatch:,.0f}
+""")
+
+# --- SIMULATION OUTPUT ---
+st.markdown("## 📊 Annual Impact (Simulated)")
+
+st.write(f"**Median Annual Savings:** ${p50:,.0f}")
+st.write(f"**80th Percentile Upside:** ${p80:,.0f}")
+
+# --- CHART ---
+chart_df = pd.DataFrame({"Simulated Savings": annual_savings_sim})
+st.bar_chart(chart_df)
+
+# --- STRATEGIC MESSAGE ---
 st.markdown("---")
-st.markdown("### 🧩 Strategic Value Defensibility")
+st.markdown("## 🧠 What This Means for Operations")
 
-col_a, col_b = st.columns(2)
+st.info("""
+Without real-time flood intelligence:
+- Crews are dispatched blind
+- Restoration is delayed
+- Regulatory exposure increases
 
-with col_a:
-    if enable_double_trip:
-        st.markdown(f"""
-        <div class="value-blade">
-        <strong>The 'Double-Trip' Gear Mismatch</strong><br>
-        Without depth-intelligence, <b>{double_trip_risk}%</b> of dispatches currently arrive with incorrect equipment. 
-        High-fidelity satellite data ensures 'Right Gear, First Trip,' eliminating redundant dispatch cycles and labor waste.
-        <br><br><i>Annual Leakage Avoided: ${(leg_double_trip * annual_events):,.0f}</i>
-        </div>
-        """, unsafe_allow_html=True)
+With this platform:
+- You see impacted assets immediately
+- You send the right crew, first time
+- You restore faster and protect revenue
+""")
 
-with col_b:
-    if enable_regulatory:
-        st.markdown(f"""
-        <div class="value-blade">
-        <strong>Regulatory Compliance (STPIS)</strong><br>
-        Outage duration is the primary driver of regulatory penalties. Accelerating ground-truth delivery by <b>{effective_time_saved:.1f} hours</b> 
-        lowers restoration latency and protects the regulated rate of return.
-        <br><br><i>Annual Penalty Mitigation: ${(leg_stpis * annual_events):,.0f}</i>
-        </div>
-        """, unsafe_allow_html=True)
-
-
-
-# THE FINANCIAL TABLE
-st.markdown("### 📊 Financial Attribution Matrix (Annualized)")
-audit_df = pd.DataFrame({
-    "Cost Category": ["Aerial Recon", "Wasted Search Dispatches", "Double-Trip Friction", "Regulatory Liability", "Direct Repair Dispatch"],
-    "Legacy Model": [f"${(leg_aerial*annual_events):,.0f}", f"${(leg_search_waste*annual_events):,.0f}", f"${(leg_double_trip*annual_events):,.0f}", f"${(leg_stpis*annual_events):,.0f}", f"${(sar_event_total*annual_events):,.0f}"],
-    "Flood Solution Enabled": ["$0 (Offset)", "$0 (Eliminated)", "$0 (Verified)", "$0 (Accelerated)", f"${(sar_event_total*annual_events):,.0f}"],
-    "Logic": ["Total Data Coverage", "Intelligence Filter", "First-Trip Fix", "Time-Lead Gain", "Core Operations"]
-})
-st.table(audit_df)
-
-st.divider()
-st.button("📄 GENERATE EXECUTIVE PROPOSAL (PDF)", use_container_width=True)
-st.markdown("<p style='text-align: center; color: #94A3B8; font-size: 0.75rem;'>Benchmarked against 2026 National Energy Market (NEM) standards.</p>", unsafe_allow_html=True)
+# --- CTA ---
+st.button("Generate Executive Brief")
