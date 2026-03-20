@@ -1,75 +1,67 @@
 import streamlit as st
 import pandas as pd
 
-st.set_page_config(page_title="Utility Flood ROI - Final", layout="wide")
+st.set_page_config(page_title="Utility Aerial ROI", layout="wide")
 
-st.title("🛰️ Satellite Flood ROI: The Strategic Asset View")
-st.markdown("---")
+st.title("🛰️ Satellite vs. Aerial Recon: Utility ROI Engine")
+st.markdown("### *Optimizing the Discovery Phase of Flood Recovery*")
+st.divider()
 
-# --- SIDEBAR: UNIT RATES & SCALE ---
+# --- SIDEBAR: GLOBAL UNIT COSTS ---
 with st.sidebar:
-    st.header("🏢 Annual Scale & Contract")
-    contract_years = st.slider("Contract Term (Years)", 1, 5, 3)
-    annual_sub = st.number_input("Annual Subscription (AUD)", value=150000)
-    events_per_year = st.slider("Major Flood Events / Year", 1, 5, 2)
+    st.header("👥 1. Field Force & Fleet")
+    total_people = st.number_input("Total Personnel Dispatched", value=100)
+    person_hr = st.number_input("Labor Rate ($/hr/person)", value=175)
+    vehicle_hr = st.number_input("Fleet Rate ($/hr/vehicle)", value=60)
     
     st.divider()
-    st.header("👤 Labor & Fleet Units")
-    people_deployed = st.number_input("Total Personnel", value=60)
-    person_hr = st.number_input("Person Hourly Rate ($)", value=175)
-    vehicle_hr = st.number_input("Vehicle Hourly Rate ($)", value=55)
-    helo_hr = st.number_input("Helicopter Hourly Rate ($)", value=4500)
+    st.header("🏢 2. Subscription & Scale")
+    annual_sub = st.number_input("Annual Satellite Sub ($)", value=150000)
+    events_per_year = st.slider("Major Flood Events / Year", 1, 5, 2)
+    
+    st.header("🚁 3. Aerial Unit Rates")
+    helo_hr = st.number_input("Helicopter Rate ($/hr)", value=4500)
+    drone_team_day = st.number_input("Drone Team Rate ($/day)", value=2500)
 
 # --- SCENARIO INPUTS ---
 col_left, col_right = st.columns(2)
 
 with col_left:
-    st.subheader("🔴 Traditional Response")
-    t_wait = st.number_input("Wait for Access (Hrs)", value=48)
-    t_assets = st.number_input("Total Assets to Inspect", value=2000, help="Every pole/transformer in the blue zone.")
-    t_waste_pct = st.slider("Wasted Visit Rate (%)", 0.0, 1.0, 0.85, help="Percentage of sites visited that are found to be undamaged.")
-    t_helo = st.number_input("Helicopter Hours Needed", value=15)
+    st.subheader("🔴 Current Recon Method")
+    recon_method = st.selectbox("Primary Discovery Tool", ["Helicopter", "Drone Fleet", "Hybrid (Both)"])
+    
+    t_wait = st.number_input("Wait for Weather/Road Access (Hrs)", value=48)
+    t_assets = st.number_input("Total Assets to Inspect", value=1500)
+    
+    # Dynamic inputs based on selection
+    t_helo_hrs = 0
+    t_drone_days = 0
+    if recon_method in ["Helicopter", "Hybrid (Both)"]:
+        t_helo_hrs = st.number_input("Manual Helicopter Hours", value=15)
+    if recon_method in ["Drone Fleet", "Hybrid (Both)"]:
+        t_drone_days = st.number_input("Manual Drone Team Days", value=12)
 
 with col_right:
-    st.subheader("🔵 SAR-Guided Response")
-    s_wait = st.number_input("Wait for SAR (Hrs)", value=8)
-    s_assets_triaged = st.number_input("Assets Flagged as 'Damaged'", value=150, help="Only these sites receive a physical visit.")
-    s_waste_pct = st.slider("Residual Waste Rate (%)", 0.0, 1.0, 0.10)
-    s_helo = st.number_input("Helicopter Hours (Targeted)", value=2)
+    st.subheader("🔵 Satellite-Led Strategy")
+    st.write("**Method:** SAR Triage → Targeted Deployment")
+    s_wait = st.number_input("Wait for Satellite Map (Hrs)", value=8)
+    s_assets_verified = st.number_input("Verified Damage Sites", value=125)
+    
+    # Targeted aerial is significantly lower
+    s_helo_hrs = st.number_input("Targeted Helo Hours (SAR Verified)", value=2)
+    s_drone_days = st.number_input("Targeted Drone Days (SAR Verified)", value=2)
 
-# --- CALCULATIONS ---
-def calc_event_costs(wait, assets, waste_pct, helo):
-    # Standby Cost (People + Fleet)
-    standby = (people_deployed * person_hr + (people_deployed/2.5) * vehicle_hr) * wait
-    # Inspection Cost (Assuming $350 per physical visit)
-    inspection_cost = assets * 350 
-    # Aerial
-    aerial = helo * helo_hr
-    return standby + inspection_cost + aerial, standby, inspection_cost, aerial
+# --- CALCULATION LOGIC ---
+def calc_event_costs(wait, assets, helo, drone):
+    num_vehicles = total_people / 2.5
+    standby = (total_people * person_hr + num_vehicles * vehicle_hr) * wait
+    inspection = assets * 350 # Direct site visit cost
+    aerial = (helo * helo_hr) + (drone * drone_team_day)
+    return standby + inspection + aerial, standby, inspection, aerial
 
-# Run Calculations
-t_total, t_standby, t_inspect, t_aerial = calc_event_costs(t_wait, t_assets, t_waste_pct, t_helo)
-# For SAR, we only inspect the triaged assets
-s_total, s_standby, s_inspect, s_aerial = calc_event_costs(s_wait, s_assets_triaged, s_waste_pct, s_helo)
+t_total, t_standby, t_inspect, t_aerial = calc_event_costs(t_wait, t_assets, t_helo_hrs, t_drone_days)
+s_total, s_standby, s_inspect, s_aerial = calc_event_costs(s_wait, s_assets_verified, s_helo_hrs, s_drone_days)
 
-# --- RESULTS ---
-savings_per_event = t_total - s_total
-total_annual_savings = savings_per_event * events_per_year
-net_annual_position = total_annual_savings - annual_sub
-
+# --- DASHBOARD ---
 st.divider()
 res1, res2, res3 = st.columns(3)
-res1.metric("Trad. Cost per Event", f"AUD ${t_total:,.0f}")
-res2.metric("SAR Cost per Event", f"AUD ${s_total:,.0f}")
-res3.metric("Annual Net Benefit", f"AUD ${net_annual_position:,.0f}", delta=f"${total_annual_savings:,.0f} Gross")
-
-# --- COMPARISON CHART ---
-st.subheader("Where the Money Goes: Manual vs. SAR")
-chart_data = pd.DataFrame({
-    "Category": ["Labor Standby", "Physical Inspections", "Aerial Surveys"],
-    "Traditional (Manual)": [t_standby, t_inspect, t_aerial],
-    "Satellite (SAR)": [s_standby, s_inspect, s_aerial]
-})
-st.bar_chart(chart_data.set_index("Category"))
-
-st.success(f"By triaging **{t_assets} impacted assets** down to just **{s_assets_triaged} verified targets**, you eliminate **${t_inspect - s_inspect:,.0f}** in unnecessary field inspections.")
