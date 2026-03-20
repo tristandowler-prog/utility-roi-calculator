@@ -1,23 +1,24 @@
 import streamlit as st
 import pandas as pd
 
-st.set_page_config(page_title="Utility Aerial ROI", layout="wide")
+st.set_page_config(page_title="Utility Flood ROI", layout="wide")
 
-st.title("🛰️ Satellite vs. Aerial Recon: Utility ROI Engine")
-st.markdown("### *Optimizing the Discovery Phase of Flood Recovery*")
+st.title("🛰️ Satellite Flood ROI: Operational Excellence")
+st.markdown("### *A Data-Driven Comparison of Traditional Recon vs. SAR-Led Triage*")
 st.divider()
 
-# --- SIDEBAR: GLOBAL UNIT COSTS ---
+# --- SIDEBAR: UNIT COSTS ---
 with st.sidebar:
-    st.header("👥 1. Field Force & Fleet")
-    total_people = st.number_input("Total Personnel Dispatched", value=100)
+    st.header("👥 1. Field Force Units")
+    total_people = st.number_input("Total Personnel Dispatched", value=120)
     person_hr = st.number_input("Labor Rate ($/hr/person)", value=175)
-    vehicle_hr = st.number_input("Fleet Rate ($/hr/vehicle)", value=60)
+    vehicle_hr = st.number_input("Fleet Rate ($/hr/vehicle)", value=55)
     
     st.divider()
-    st.header("🏢 2. Subscription & Scale")
+    st.header("🏢 2. Annual Investment")
     annual_sub = st.number_input("Annual Satellite Sub ($)", value=150000)
     events_per_year = st.slider("Major Flood Events / Year", 1, 5, 2)
+    contract_years = st.slider("Contract Term (Years)", 1, 5, 3)
     
     st.header("🚁 3. Aerial Unit Rates")
     helo_hr = st.number_input("Helicopter Rate ($/hr)", value=4500)
@@ -27,41 +28,59 @@ with st.sidebar:
 col_left, col_right = st.columns(2)
 
 with col_left:
-    st.subheader("🔴 Current Recon Method")
-    recon_method = st.selectbox("Primary Discovery Tool", ["Helicopter", "Drone Fleet", "Hybrid (Both)"])
+    st.subheader("🔴 Traditional Response")
+    recon_method = st.selectbox("Primary Tool", ["Helicopter", "Drone Fleet", "Hybrid"])
+    t_wait = st.number_input("Recon Wait Time (Hrs)", value=48)
+    t_assets = st.number_input("Total Assets in Zone", value=2000)
     
-    t_wait = st.number_input("Wait for Weather/Road Access (Hrs)", value=48)
-    t_assets = st.number_input("Total Assets to Inspect", value=1500)
-    
-    # Dynamic inputs based on selection
-    t_helo_hrs = 0
-    t_drone_days = 0
-    if recon_method in ["Helicopter", "Hybrid (Both)"]:
-        t_helo_hrs = st.number_input("Manual Helicopter Hours", value=15)
-    if recon_method in ["Drone Fleet", "Hybrid (Both)"]:
-        t_drone_days = st.number_input("Manual Drone Team Days", value=12)
+    t_helo_hrs = st.number_input("Manual Helo Hours", value=15) if recon_method in ["Helicopter", "Hybrid"] else 0
+    t_drone_days = st.number_input("Manual Drone Days", value=12) if recon_method in ["Drone Fleet", "Hybrid"] else 0
 
 with col_right:
     st.subheader("🔵 Satellite-Led Strategy")
-    st.write("**Method:** SAR Triage → Targeted Deployment")
-    s_wait = st.number_input("Wait for Satellite Map (Hrs)", value=8)
-    s_assets_verified = st.number_input("Verified Damage Sites", value=125)
-    
-    # Targeted aerial is significantly lower
-    s_helo_hrs = st.number_input("Targeted Helo Hours (SAR Verified)", value=2)
-    s_drone_days = st.number_input("Targeted Drone Days (SAR Verified)", value=2)
+    s_wait = st.number_input("SAR Map Delivery (Hrs)", value=8)
+    s_assets_verified = st.number_input("SAR-Verified Damage Sites", value=150)
+    s_helo_hrs = st.number_input("Targeted Helo Hours", value=2)
+    s_drone_days = st.number_input("Targeted Drone Days", value=2)
 
 # --- CALCULATION LOGIC ---
-def calc_event_costs(wait, assets, helo, drone):
-    num_vehicles = total_people / 2.5
-    standby = (total_people * person_hr + num_vehicles * vehicle_hr) * wait
-    inspection = assets * 350 # Direct site visit cost
+num_vehicles = total_people / 2.5
+
+def get_breakdown(wait, assets, helo, drone):
+    standby_labor = (total_people * person_hr) * wait
+    standby_fleet = (num_vehicles * vehicle_hr) * wait
+    inspections = assets * 350 # Direct cost per site visit
     aerial = (helo * helo_hr) + (drone * drone_team_day)
-    return standby + inspection + aerial, standby, inspection, aerial
+    return standby_labor, standby_fleet, inspections, aerial
 
-t_total, t_standby, t_inspect, t_aerial = calc_event_costs(t_wait, t_assets, t_helo_hrs, t_drone_days)
-s_total, s_standby, s_inspect, s_aerial = calc_event_costs(s_wait, s_assets_verified, s_helo_hrs, s_drone_days)
+# Get Values
+t_lab, t_flt, t_ins, t_aer = get_breakdown(t_wait, t_assets, t_helo_hrs, t_drone_days)
+s_lab, s_flt, s_ins, s_aer = get_breakdown(s_wait, s_assets_verified, s_helo_hrs, s_drone_days)
 
-# --- DASHBOARD ---
+# --- RESULTS DASHBOARD ---
 st.divider()
-res1, res2, res3 = st.columns(3)
+m1, m2, m3 = st.columns(3)
+m1.metric("Manual Cost / Event", f"${(t_lab+t_flt+t_ins+t_aer):,.0f}")
+m2.metric("SAR Cost / Event", f"${(s_lab+s_flt+s_ins+s_aer):,.0f}")
+m3.metric("Net Annual Benefit", f"${((t_lab+t_flt+t_ins+t_aer - (s_lab+s_flt+s_ins+s_aer)) * events_per_year) - annual_sub:,.0f}")
+
+# --- RESTORED: SAVINGS TABLE ---
+st.subheader("💰 Detailed Savings Breakdown (Per Event)")
+savings_data = {
+    "Expense Category": ["Field Labor (Standby)", "Fleet (Idle/Wasted)", "Physical Inspections", "Aerial (Helo/Drone)"],
+    "Traditional Cost": [f"${t_lab:,.0f}", f"${t_flt:,.0f}", f"${t_ins:,.0f}", f"${t_aer:,.0f}"],
+    "Satellite Cost": [f"${s_lab:,.0f}", f"${s_flt:,.0f}", f"${s_ins:,.0f}", f"${s_aer:,.0f}"],
+    "Hard Saving": [f"${t_lab-s_lab:,.0f}", f"${t_flt-s_flt:,.0f}", f"${t_ins-s_ins:,.0f}", f"${t_aer-s_aer:,.0f}"]
+}
+st.table(pd.DataFrame(savings_data))
+
+# --- COMPARISON CHART ---
+st.subheader("Operational Cost Comparison")
+chart_df = pd.DataFrame({
+    "Category": ["Labor", "Fleet", "Inspections", "Aerial"],
+    "Traditional": [t_lab, t_flt, t_ins, t_aer],
+    "Satellite": [s_lab, s_flt, s_ins, s_aer]
+})
+st.bar_chart(chart_df.set_index("Category"))
+
+st.success(f"Over **{contract_years} years**, this strategy delivers a total net benefit of **${(((t_lab+t_flt+t_ins+t_aer - (s_lab+s_flt+s_ins+s_aer)) * events_per_year) - annual_sub) * contract_years:,.0f}**.")
