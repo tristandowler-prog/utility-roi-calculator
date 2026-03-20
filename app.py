@@ -69,6 +69,15 @@ with col_right:
     st.info(f"Subscription (${annual_sub:,.0f}) ÷ Events ({events_per_year}) = **${sar_total:,.0f} per event**")
     st.write("*(SAR replaces all manual field scouting and aerial recon costs)*")
 
-# --- DASHBOARD ---
+# --- DASHBOARD (SYNTAX CHECKED) ---
 st.divider()
-m1, m2, m3 =
+m1, m2, m3 = st.columns(3)
+
+m_total_str = f"${manual_total:,.0f}"
+s_total_str = f"${sar_total:,.0f}"
+annual_net = (manual_total * events_per_year) - annual_sub
+annual_net_str = f"${annual_net:,.0f}"
+
+m1.metric("Manual Search Cost / Event", m_total_str)
+m2.metric("True SAR Cost / Event", s_total_str, 
+          delta=f"-${manual_total - sar_total:,.0f}", delta
