@@ -24,7 +24,7 @@ with st.sidebar:
     drone_day_rate = st.number_input("Drone Team Rate ($/day)", value=2500)
 
 # --- THE "ACCOUNTING" MATH ---
-# Fixed Sub divided by events. 150k / 2 = 75k. 150k / 5 = 30k.
+# Fixed Sub divided by events. (e.g., 150k / 2 = 75k)
 data_cost_per_event = annual_sub / events_per_year
 
 num_vehicles = total_people / 2.5
@@ -46,7 +46,7 @@ with col_right:
     s_assets_wet = st.number_input("Confirmed Wet Assets", value=140)
     st.info(f"💡 **Data Cost:** Your ${annual_sub:,.0f} sub currently costs **${data_cost_per_event:,.0f} per event**.")
 
-# --- THE CALCULATIONS (STRICT VARIABLE NAMING) ---
+# --- THE CALCULATIONS (AUDITED) ---
 
 # 1. LEGACY TOTAL (Per Event)
 t_standby_cost = hourly_burn * t_wait
@@ -65,27 +65,24 @@ st.divider()
 m1, m2, m3 = st.columns(3)
 
 m1.metric("Legacy Cost / Event", f"${t_event_total:,.0f}")
-# This will now DECREASE when you increase the number of events
 m2.metric("True SAR Cost / Event", f"${s_event_total:,.0f}", 
           delta=f"-${t_event_total - s_event_total:,.0f}", delta_color="inverse")
 
 annual_net_benefit = (t_event_total - s_event_total) * events_per_year
 m3.metric("Net Annual Position", f"${annual_net_benefit:,.0f}", help="Total yearly savings after paying the sub.")
 
-# --- TABLE ---
+# --- TABLE (AUDITED LINE-BY-LINE) ---
 st.subheader("Cost Breakdown (Per Event)")
 comparison_data = {
-    "Expense Category": ["Field Standby (Wages)", "Aerial Search (Helo/Drone)", "Physical Site Inspections", "Satellite Data (Subscription Share)"],
-    "Legacy Method": [f"${t_standby_cost:,.0f}", f"${t_recon_cost:,.0f}", f"${t_visit_cost:,.0f}", "$0"],
-    "ICEYE Method": [f"${s_standby_cost:,.0f}", "$0 (Replaced)", f"${s_visit_cost:,.0f}", f"${data_cost_per_event:,.0f}"]
-}
-st.table(pd.DataFrame(comparison_data))
-
-# --- CHART ---
-st.subheader("Cost Comparison per Event")
-chart_df = pd.DataFrame({
-    "Category": ["Standby", "Recon", "Inspections", "Data Cost"],
-    "Legacy": [t_standby_cost, t_recon_cost, t_visit_cost, 0],
-    "ICEYE": [s_standby_cost, 0, s_visit_cost, data_cost_per_event]
-})
-st.bar_chart(chart_df.set_index("Category"))
+    "Expense Category": ["Field Standby (Wait Time)", "Aerial Recon (Helo/Drone)", "Physical Site Inspections", "Satellite Data (Subscription Share)"],
+    "Legacy Method": [
+        f"${t_standby_cost:,.0f}", 
+        f"${t_recon_cost:,.0f}", 
+        f"${t_visit_cost:,.0f}", 
+        "$0"
+    ],
+    "ICEYE Method": [
+        f"${s_standby_cost:,.0f}", 
+        "$0 (Replaced by SAR)", 
+        f"${s_visit_cost:,.0f}", 
+        f"${data_cost_per_event:,.0f
