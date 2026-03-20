@@ -1,26 +1,25 @@
 import streamlit as st
 import numpy as np
 import pandas as pd
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image
-from reportlab.lib.styles import getSampleStyleSheet
-from reportlab.lib.pagesizes import A4
 
-# --- SAFE IMPORT ---
+# --- SAFE PDF IMPORT ---
 try:
-    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image, PageBreak
+    from reportlab.lib.styles import getSampleStyleSheet
+    from reportlab.lib.pagesizes import A4
     PDF_ENABLED = True
 except ModuleNotFoundError:
     PDF_ENABLED = False
 
-# --- PAGE SETUP ---
-st.set_page_config(page_title="Flood Intelligence | Boardroom Engine", layout="wide")
+# --- PAGE CONFIG ---
+st.set_page_config(page_title="Utility Flood ROI Model", layout="wide")
 
-# --- SIDEBAR ---
+# --- SIDEBAR INPUTS ---
 with st.sidebar:
-    st.title("⚙️ Customer Inputs (AU Utility Calibrated)")
+    st.title("⚙️ Customer Inputs")
 
     customer_name = st.text_input("Customer Name", "AGL Energy")
-    uploaded_logo = st.file_uploader("Upload Company Logo", type=["png","jpg","jpeg"])
+    uploaded_logo = st.file_uploader("Upload Logo", type=["png","jpg","jpeg"])
 
     st.markdown("### 📡 Subscription")
     sar_sub = st.number_input("Annual Subscription ($)", value=150000)
@@ -38,17 +37,17 @@ with st.sidebar:
     base_search_time = st.number_input("Search Time (mins)", value=44)
     double_trip_risk = st.slider("Double Dispatch Risk (%)", 0, 100, 40)
 
-    st.markdown("### ⚖️ Regulatory (AER/STPIS)")
+    st.markdown("### ⚖️ Regulatory")
     stpis_penalty = st.number_input("Penalty ($/min/asset)", value=125)
 
     st.markdown("### ⏱️ Data")
     latency = st.select_slider("Latency", ["6h","12h","24h","48h"], value="12h")
 
-# --- FACTORS ---
+# --- MODEL FACTORS ---
 scenario_multiplier = {"Urban Flood":1.0,"Regional Storm":1.4,"Severe Event":2.0}[scenario]
 latency_factor = {"6h":1.0,"12h":0.8,"24h":0.5,"48h":0.2}[latency]
 
-# --- CALCULATIONS ---
+# --- CORE CALCULATIONS ---
 exposed_assets = int(total_assets * (inundation/100))
 dry_assets = total_assets - exposed_assets
 
@@ -77,11 +76,10 @@ monthly_cost = sar_sub / 12
 cost_per_event = sar_sub / events_per_year
 
 # --- UI ---
-st.title("Utility Flood ROI Model" )
-st.subheader("Cost-Benefit Analysis for Network Resilience")")
+st.title("Utility Flood ROI Model")
+st.subheader("Cost-Benefit Analysis for Network Resilience")
 
 c1, c2, c3, c4 = st.columns(4)
-
 c1.metric("Visibility", f"{visibility:.0f}%")
 c2.metric("Blind Dispatch", f"{blind_dispatch_rate:.0f}%")
 c3.metric("ROI", f"{roi:,.0f}%")
@@ -99,46 +97,85 @@ Subscription:
 Payback achieved in ~{payback_months:.1f} months
 """)
 
-# --- DO NOTHING ---
 st.error(f"Do Nothing Scenario: Annual Loss = ${legacy_annual:,.0f}")
 
+# --- CHART ---
+df = pd.DataFrame({
+    "Category": ["Search Waste","Double Dispatch","Regulatory","Subscription"],
+    "Cost": [
+        search_waste*events_per_year,
+        double_dispatch_cost*events_per_year,
+        regulatory_cost*events_per_year,
+        sar_sub
+    ]
+})
+st.bar_chart(df.set_index("Category"))
+
 # --- PDF GENERATION ---
-def generate_pdf():
-    doc = SimpleDocTemplate("/mnt/data/flood_roi_report.pdf", pagesize=A4)
-    styles = getSampleStyleSheet()
-
-    content = []
-
-    # Logo
-    if uploaded_logo is not None:
-        content.append(Image(uploaded_logo, width=120, height=60))
-
-    content.append(Paragraph("Utility Flood ROI Model Business Case", styles['Title']))
-    content.append(Spacer(1, 12))
-
-    content.append(Paragraph(f"Prepared for: {customer_name}", styles['Normal']))
-    content.append(Spacer(1, 12))
-
-    content.append(Paragraph("Executive Summary", styles['Heading2']))
-    content.append(Paragraph(
-        f"This analysis demonstrates an annual net benefit of ${net_benefit:,.0f}, with ROI of {roi:.0f}% and payback in {payback_months:.1f} months.",
-        styles['Normal']
-    ))
-
-    content.append(Spacer(1, 12))
-    content.append(Paragraph("Key Assumptions", styles['Heading2']))
-    content.append(Paragraph(f"Assets: {total_assets}", styles['Normal']))
-    content.append(Paragraph(f"Events/year: {events_per_year}", styles['Normal']))
-    content.append(Paragraph(f"Crew cost: ${crew_cost}", styles['Normal']))
-
-    doc.build(content)
-    return "/mnt/data/flood_roi_report.pdf"
-
-# --- BUTTON ---
 if PDF_ENABLED:
+
+    def generate_pdf():
+        doc = SimpleDocTemplate("/mnt/data/flood_report.pdf", pagesize=A4)
+        styles = getSampleStyleSheet()
+        content = []
+
+        # PAGE 1
+        if uploaded_logo is not None:
+            content.append(Image(uploaded_logo, width=120, height=60))
+
+        content.append(Paragraph("Utility Flood ROI Model – Business Case Analysis", styles['Title']))
+        content.append(Spacer(1, 12))
+        content.append(Paragraph(f"Prepared for: {customer_name}", styles['Normal']))
+        content.append(Spacer(1, 20))
+
+        content.append(Paragraph("Executive Summary", styles['Heading2']))
+        content.append(Paragraph(
+            f"Annual net benefit of ${net_benefit:,.0f}, ROI of {roi:.0f}%, "
+            f"with payback in {payback_months:.1f} months.",
+            styles['Normal']
+        ))
+
+        content.append(Spacer(1, 20))
+        content.append(Paragraph(
+            "Recommendation: Adoption is justified based on strong financial return and reduced operational risk.",
+            styles['Normal']
+        ))
+
+        content.append(PageBreak())
+
+        # PAGE 2
+        content.append(Paragraph("Financial Breakdown", styles['Heading1']))
+        content.append(Spacer(1, 12))
+
+        content.append(Paragraph(f"Annual Loss (Do Nothing): ${legacy_annual:,.0f}", styles['Normal']))
+        content.append(Paragraph(f"Annual Solution Cost: ${solution_annual:,.0f}", styles['Normal']))
+        content.append(Paragraph(f"Net Benefit: ${net_benefit:,.0f}", styles['Normal']))
+
+        content.append(Spacer(1, 20))
+        content.append(Paragraph("Cost Drivers:", styles['Heading2']))
+        content.append(Paragraph(f"Search Waste: ${search_waste*events_per_year:,.0f}", styles['Normal']))
+        content.append(Paragraph(f"Double Dispatch: ${double_dispatch_cost*events_per_year:,.0f}", styles['Normal']))
+        content.append(Paragraph(f"Regulatory Exposure: ${regulatory_cost*events_per_year:,.0f}", styles['Normal']))
+
+        content.append(PageBreak())
+
+        # PAGE 3
+        content.append(Paragraph("Model Assumptions", styles['Heading1']))
+        content.append(Spacer(1, 12))
+
+        content.append(Paragraph(f"Total Assets: {total_assets}", styles['Normal']))
+        content.append(Paragraph(f"Events per Year: {events_per_year}", styles['Normal']))
+        content.append(Paragraph(f"Crew Cost: ${crew_cost}", styles['Normal']))
+        content.append(Paragraph(f"Inundation Rate: {inundation}%", styles['Normal']))
+        content.append(Paragraph(f"Latency: {latency}", styles['Normal']))
+
+        doc.build(content)
+        return "/mnt/data/flood_report.pdf"
+
     if st.button("📄 Generate Board PDF"):
         file_path = generate_pdf()
         with open(file_path, "rb") as f:
-            st.download_button("Download Report", f, file_name="Flood_ROI_Report.pdf")
+            st.download_button("Download Report", f, file_name="Utility_Flood_ROI_Report.pdf")
+
 else:
-    st.warning("PDF generation unavailable in this environment.")
+    st.warning("PDF generation unavailable — install reportlab in requirements.txt")
