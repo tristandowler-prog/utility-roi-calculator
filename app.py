@@ -3,147 +3,125 @@ import pandas as pd
 import base64
 
 # --- PAGE CONFIG ---
-st.set_page_config(page_title="Strategic Insight Engine | SAR", layout="wide")
+st.set_page_config(page_title="Strategic Audit | Utility Resilience", layout="wide")
 
-# --- BIG 4 DESIGN SYSTEM (CSS) ---
+# --- BIG 4 CONSULTING DESIGN SYSTEM ---
 st.markdown("""
 <style>
-    /* Global Background & Font */
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap');
-    
     html, body, [data-testid="stAppViewContainer"] {
         font-family: 'Inter', sans-serif;
-        background-color: #F9FAFB;
+        background-color: #FFFFFF;
     }
-
-    /* Professional Sidebar */
     [data-testid="stSidebar"] {
         background-color: #111827;
-        color: white;
+        padding: 2rem 1rem;
     }
-    
-    /* Bento Box Cards */
-    .bento-card {
-        background-color: #ffffff;
-        border-radius: 16px;
-        padding: 30px;
-        border: 1px solid #E5E7EB;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-        height: 100%;
+    .report-card {
+        background-color: #F9FAFB;
+        border-radius: 8px;
+        padding: 25px;
+        border-left: 5px solid #111827;
+        margin-bottom: 20px;
     }
-    
-    .kpi-label {
-        color: #6B7280;
-        font-size: 0.75rem;
+    .section-header {
+        font-size: 0.8rem;
         font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.1em;
-    }
-    
-    .kpi-value {
-        color: #111827;
-        font-size: 2.25rem;
-        font-weight: 800;
-        margin-top: 8px;
-    }
-    
-    .kpi-delta {
-        font-size: 0.875rem;
-        font-weight: 600;
-        margin-top: 4px;
-    }
-
-    /* Tab Styling */
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 24px;
-    }
-    .stTabs [data-baseweb="tab"] {
-        height: 50px;
-        font-weight: 600;
-        font-size: 16px;
         color: #6B7280;
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        margin-bottom: 10px;
     }
-    .stTabs [aria-selected="true"] {
-        color: #111827 !important;
-        border-bottom-color: #111827 !important;
+    .kpi-box {
+        text-align: center;
+        padding: 20px;
+        background: #FFFFFF;
+        border: 1px solid #E5E7EB;
+        border-radius: 12px;
     }
 </style>
 """, unsafe_allow_html=True)
 
-# --- CALCULATIONS ---
+# --- SIDEBAR FILTERS (CUSTOMER INPUTS) ---
 with st.sidebar:
-    st.markdown("### ⚙️ PARAMETERS")
-    annual_sub = st.number_input("Annual Investment", value=150000)
-    events_per_year = st.slider("Annual Events", 1, 15, 6)
-    st.divider()
-    total_assets = st.slider("Total Assets in Scope", 100, 1000, 500)
-    damage_ratio = st.slider("Actual Inundation %", 5, 100, 20)
+    st.markdown("<h2 style='color:white;'>Audit Filters</h2>", unsafe_allow_html=True)
     
-    # Constants
-    labor_rate = 175
-    ppl = 120
-    contractors = 15
-    hourly_burn = (ppl * labor_rate) + (contractors * 700)
-    actual_wet = int(total_assets * (damage_ratio/100))
+    with st.expander("📡 SATELLITE & DATA"):
+        sar_sub = st.number_input("Annual SAR Subscription (AUD)", value=150000)
+        sar_latency = st.select_slider("Data Refresh Cadence", options=["48h", "24h", "12h", "6h"], value="6h")
+        processing_time = st.number_input("SAR Processing Time (Hrs)", value=1, help="Time from satellite pass to actionable dashboard.")
 
-# Scenario Logic
-scenarios = {
-    "Base Case": {"search": 48, "reduction": 0.40, "aerial": 85000},
-    "High Impact": {"search": 72, "reduction": 0.70, "aerial": 150000}
-}
+    with st.expander("🚁 AERIAL RECONNAISSANCE"):
+        helo_rate = st.number_input("Helicopter Hourly Rate (AUD)", value=2800, help="Avg AU rate for Bell 206/H125 utility config.")
+        helo_hours = st.number_input("Helo Scouting Hours / Event", value=12)
+        drone_rate = st.number_input("Drone Team Hourly Rate (AUD)", value=450)
+        drone_hours = st.number_input("Drone Scouting Hours / Event", value=20)
 
-res = []
-for name, s in scenarios.items():
-    l_total = (hourly_burn * s["search"]) + s["aerial"] + (total_assets * 450) + (hourly_burn * 96)
-    s_total = (annual_sub/events_per_year) + (hourly_burn * 4) + (actual_wet * 450) + (hourly_burn * 72)
-    savings = l_total - s_total
-    res.append({"Scenario": name, "Savings": savings * events_per_year, "ROI": (savings * events_per_year / annual_sub) * 100})
+    with st.expander("👥 FIELD FORCE & MOB"):
+        labor_rate = st.number_input("Fully Burdened Labor ($/hr)", value=185)
+        crew_size = st.number_input("Emergency Response Staff", value=120)
+        mob_fee = st.number_input("Contractor Mob Fee (Per Crew)", value=15000)
+        num_contractors = st.number_input("Contractor Crews", value=10)
 
-# --- UI LAYOUT ---
-st.markdown("<p style='color: #6B7280; font-weight: 600;'>STRATEGIC ADVISORY | UTILITY SECTOR</p>", unsafe_allow_html=True)
-st.markdown("<h1 style='margin-top: -10px;'>Grid Resilience & SAR Efficiency Audit</h1>", unsafe_allow_html=True)
+    with st.expander("⛈️ EVENT SCALE"):
+        events_per_year = st.slider("Annual Flood Events", 1, 12, 6)
+        total_assets = st.number_input("Substations in Footprint", value=500)
+        inundation_pct = st.slider("Actual Inundation Rate (%)", 5, 100, 20)
 
-# THE BENTO GRID (TOP LINE METRICS)
-col1, col2, col3 = st.columns(3)
+# --- LOGIC & CALCULATION ---
+actual_wet = int(total_assets * (inundation_pct / 100))
+hourly_burn = (crew_size * labor_rate) + (num_contractors * 750) # contractors cost more
 
-with col1:
-    st.markdown(f"""<div class="bento-card">
-        <div class="kpi-label">Projected Annual Cost Avoidance</div>
-        <div class="kpi-value">${res[0]['Savings']:,.0f}</div>
-        <div class="kpi-delta" style="color: #059669;">↑ Based on Base Case</div>
-    </div>""", unsafe_allow_html=True)
+# LEGACY MODEL (The "Blind" Response)
+legacy_scouting_cost = (helo_rate * helo_hours) + (drone_rate * drone_hours)
+legacy_labor_search = (hourly_burn * 48) # Avg 2 days blind searching
+legacy_truck_rolls = total_assets * 450 # Checking every single asset
+legacy_mob = num_contractors * mob_fee
+legacy_total_event = legacy_scouting_cost + legacy_labor_search + legacy_truck_rolls + legacy_mob
 
-with col2:
-    st.markdown(f"""<div class="bento-card">
-        <div class="kpi-label">Strategic ROI</div>
-        <div class="kpi-value">{res[0]['ROI']:,.0f}%</div>
-        <div class="kpi-delta" style="color: #059669;">Capital Optimized</div>
-    </div>""", unsafe_allow_html=True)
+# SAR MODEL (The "Targeted" Response)
+sar_data_cost = sar_sub / events_per_year
+sar_desk_eval = (hourly_burn * 4) # 4 hours to verify dashboard
+sar_targeted_rolls = actual_wet * 450 # Only go to wet assets
+sar_mob_saving = legacy_mob * 0.5 # Cancel 50% of contractors
+sar_total_event = sar_data_cost + sar_desk_eval + sar_targeted_rolls + (legacy_mob - sar_mob_saving)
 
-with col3:
-    st.markdown(f"""<div class="bento-card">
-        <div class="kpi-label">Phase 1 Time Buy-Back</div>
-        <div class="kpi-value">44 Hours</div>
-        <div class="kpi-delta" style="color: #059669;">Accelerated Restoration</div>
-    </div>""", unsafe_allow_html=True)
+event_savings = legacy_total_event - sar_total_event
+annual_savings = event_savings * events_per_year
+roi = (annual_savings / sar_sub) * 100
+
+# --- MAIN REPORT SECTION ---
+st.markdown("<p class='section-header'>Strategic Advisory | Global Utility Infrastructure</p>", unsafe_allow_html=True)
+st.title("Financial & Operational Audit: SAR-Enabled Flood Response")
+st.markdown("---")
+
+# KPI TOP LINE
+c1, c2, c3 = st.columns(3)
+with c1:
+    st.markdown(f"<div class='kpi-box'><p class='section-header'>Annual Cash Avoidance</p><h2 style='color:#111827;'>${annual_savings:,.0f}</h2></div>", unsafe_allow_html=True)
+with c2:
+    st.markdown(f"<div class='kpi-box'><p class='section-header'>Strategic ROI</p><h2 style='color:#059669;'>{roi:,.0f}%</h2></div>", unsafe_allow_html=True)
+with c3:
+    st.markdown(f"<div class='kpi-box'><p class='section-header'>SAIDI Recovery Advance</p><h2 style='color:#2563EB;'>44 Hours</h2></div>", unsafe_allow_html=True)
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# TABS FOR DRILL-DOWN
-t1, t2 = st.tabs(["Operational Defensibility", "Sensitivity Analysis"])
+# THE DETAILED BREAKDOWN
+st.markdown("### 1. The Cost of Uncertainty (Legacy vs. Targeted)")
+col_a, col_b = st.columns([2, 1])
 
-with t1:
-    st.markdown("### The Efficiency Differential")
-    audit_data = {
-        "Response Pillar": ["Asset Validation (The Scouting Phase)", "Aerial Reconnaissance (Helo/Drone)", "Resource Mobilization", "Wrench-Time Efficiency"],
-        "Legacy Model": ["Manual Grid Verification", "Variable Hourly Contracts", "Full Force Mobilization", "Blind Dispatch"],
-        "SAR-Enabled Model": ["Remote Detection (Desk-Based)", "Asset-Targeted Scouting", "Optimized Core-Crew Only", "Targeted Equipment Dispatch"],
-        "Impact": ["-90% Time", "-100% Waste", "-40% Mob Cost", "Trip 1 Resolution"]
-    }
-    st.table(pd.DataFrame(audit_data))
+with col_a:
+    st.markdown("""
+    <div class='report-card'>
+        <strong>Analysis of 'Blind' Scouting Overhead</strong><br>
+        In the legacy model, the utility incurs a 'Search Penalty'—paying for helicopters and field crews to verify 
+        assets that are ultimately dry. SAR technology substitutes this physical search with a 6-hour refresh 
+        digital twin, allowing for <strong>Targeted Dispatch</strong>.
+    </div>
+    """, unsafe_allow_html=True)
     
-    st.info("**Methodology Note:** Savings are derived from the decoupling of 'Damage Discovery' from 'Physical Site Visits.' By isolating impacted assets in the Cloud, we eliminate 'Zero-Value' truck rolls to dry sites.")
-
-with t2:
-    st.subheader("Financial Sensitivity Mapping")
-    chart_df = pd
+    # Audit Table
+    audit_data = {
+        "Cost Pillar": ["Aerial Recon (Helo/Drone)", "Blind Search Labor", "Asset Verification Visits", "Contractor Mobilization"],
+        "Legacy Model (AUD)": [f"${legacy_scouting_cost:,.0f}", f"${legacy_labor_search:,.0f}", f"${legacy_truck_rolls:,.0f}", f"${legacy_mob:,.0f}"],
+        "SAR Model (AUD)": ["$0", f"${sar_desk_eval:,.0f
