@@ -1,47 +1,50 @@
 import streamlit as st
 import pandas as pd
-import io
 
 # --- PAGE SETUP ---
 st.set_page_config(page_title="Infrastructure Audit | Continuity Benchmark", layout="wide")
 
-# --- HIGH-AUTHORITY ENTERPRISE UI ---
+# --- EXECUTIVE GLASS UI ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap');
     .stApp {
         background: linear-gradient(rgba(10, 20, 32, 0.94), rgba(10, 20, 32, 0.94)), 
                     url("https://share.google/KpUEQWOjnCWCGErW5");
-        background-size: cover;
-        background-attachment: fixed;
-        color: #E6EDF3;
+        background-size: cover; background-attachment: fixed; color: #E6EDF3;
     }
     .value-blade {
-        background: rgba(255, 255, 255, 0.03);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        border-left: 4px solid #38BDF8;
-        padding: 24px;
-        margin-bottom: 20px;
-        border-radius: 4px;
-        backdrop-filter: blur(10px);
+        background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.1);
+        border-left: 4px solid #38BDF8; padding: 24px; margin-bottom: 20px; border-radius: 4px; backdrop-filter: blur(10px);
     }
     .metric-title { font-size: 0.75rem; font-weight: 700; color: #8B949E; text-transform: uppercase; letter-spacing: 1.5px; }
     .metric-value { font-size: 2.2rem; font-weight: 800; color: #FFFFFF; margin-top: 5px; }
     .metric-sub { font-size: 0.85rem; color: #34D399; font-weight: 600; }
-    
-    /* Input Styling */
-    .stNumberInput, .stSlider { background: rgba(255,255,255,0.02); border-radius: 8px; padding: 5px; }
 </style>
 """, unsafe_allow_html=True)
 
 # --- SIDEBAR: MODULAR AUDIT CONTROLS ---
 with st.sidebar:
     st.markdown("## 🔍 Audit Configuration")
-    st.info("Toggle operational modules to build your custom business case.")
+    
+    # --- NEW: SUBSCRIPTION & LATENCY ---
+    st.markdown("### 🛰️ SAR Service Tier")
+    sar_annual_sub = st.number_input("Annual Subscription (AUD)", value=150000, step=10000)
+    data_latency = st.select_slider(
+        "Data Delivery Window (Latency)",
+        options=["6h", "12h", "24h", "48h", "72h"],
+        value="6h",
+        help="Faster data delivery drastically increases the 'Time Buy-Back' for restoration."
+    )
+    
+    # Latency Multiplier (Penalty for being slow)
+    latency_map = {"6h": 1.0, "12h": 0.85, "24h": 0.60, "48h": 0.30, "72h": 0.10}
+    efficiency_factor = latency_map[data_latency]
+
+    st.divider()
 
     # --- CATEGORY 1: AERIAL ---
-    st.markdown("---")
-    enable_aerial = st.toggle("🛰️ Aerial Reconnaissance", value=True)
+    enable_aerial = st.toggle("🚁 Aerial Reconnaissance", value=True)
     if enable_aerial:
         helo_flights = st.number_input("Avg. Flights per Event", value=3)
         helo_rate = st.number_input("Cost per Flight (AUD)", value=25000)
@@ -50,104 +53,89 @@ with st.sidebar:
         leg_aerial = 0
 
     # --- CATEGORY 2: FIELD FORCE ---
-    st.markdown("---")
     enable_field = st.toggle("🚛 Field Crew Dispatches", value=True)
     if enable_field:
         total_assets = st.number_input("Substations in Footprint", value=500)
         inundation_rate = st.slider("Historical Impact Rate (%)", 5, 80, 20)
         crew_callout = st.number_input("Cost per Crew Dispatch ($)", value=650)
-        
         actual_wet = int(total_assets * (inundation_rate/100))
-        wasted_dispatches = total_assets - actual_wet
-        
         leg_field = total_assets * crew_callout
+        # SAR only dispatches to wet assets, but efficiency drops if data is late
         sar_field = actual_wet * crew_callout
     else:
-        actual_wet = 100 # Default for other calcs
+        actual_wet = 100
         leg_field = 0
         sar_field = 0
 
     # --- CATEGORY 3: REGULATORY ---
-    st.markdown("---")
     enable_regulatory = st.toggle("⚖️ Regulatory (STPIS) Liability", value=True)
     if enable_regulatory:
         stpis_rate = st.number_input("Penalty Rate ($/Min/Sub)", value=120)
-        lead_time_hrs = st.slider("SAR Intelligence Lead (Hrs)", 6, 72, 44)
-        leg_stpis = (actual_wet * stpis_rate * (lead_time_hrs * 60))
+        # Lead time is reduced by latency. If latency is 72h, lead time gain is wiped out.
+        base_lead_time = 48 
+        effective_lead_time = max(0, base_lead_time * efficiency_factor)
+        leg_stpis = (actual_wet * stpis_rate * (effective_lead_time * 60))
     else:
         leg_stpis = 0
+        effective_lead_time = 0
 
 # --- VALUE ENGINE ---
-sar_event_cost = 25000 # Standard per-event data allocation
-legacy_total = leg_aerial + leg_field + leg_stpis
-sar_total = sar_event_cost + sar_field
+events_per_year = 4 # Standardized AU flood cycle
+annual_legacy_cost = (leg_aerial + leg_field + leg_stpis) * events_per_year
+annual_sar_ops = (sar_field * events_per_year) + sar_annual_sub
 
-total_mitigated = legacy_total - sar_total
-roi_multiplier = total_mitigated / sar_event_cost if sar_event_cost > 0 else 0
+net_annual_saving = annual_legacy_cost - annual_sar_ops
+roi_pct = (net_annual_saving / sar_annual_sub) * 100 if sar_annual_sub > 0 else 0
 
 # --- MAIN BENCHMARK REPORT ---
 st.markdown("<p style='color: #38BDF8; font-weight: 700; letter-spacing: 2px;'>OPERATIONAL BENCHMARK AUDIT</p>", unsafe_allow_html=True)
-st.title("Satellite Intelligence vs. Legacy Flood Response")
-st.markdown("#### Quantifying Operational Friction & Regulatory Exposure")
+st.title("Strategic Infrastructure Resilience Benchmark")
+st.markdown(f"#### Comparative Analysis: Manual Response vs. SAR-Enabled Recovery ({data_latency} Latency)")
 
 # TOP ROW: QUANTIFIED ROI
 c1, c2, c3 = st.columns(3)
 with c1:
-    st.markdown(f'<div class="value-blade"><p class="metric-title">Value at Risk Mitigated</p><p class="metric-value">${total_mitigated:,.0f}</p><p class="metric-sub">Per Event Outcome</p></div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="value-blade"><p class="metric-title">Annual Value Protected</p><p class="metric-value">${net_annual_saving:,.0f}</p><p class="metric-sub">Net Benefit (After Sub)</p></div>', unsafe_allow_html=True)
 with c2:
-    st.markdown(f'<div class="value-blade"><p class="metric-title">Lead-Time Advantage</p><p class="metric-value">{lead_time_hrs if enable_regulatory else "--"} HRS</p><p class="metric-sub" style="color:#38BDF8;">Faster Restoration Window</p></div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="value-blade"><p class="metric-title">Effective Lead-Time</p><p class="metric-value">{effective_lead_time:.1f} HRS</p><p class="metric-sub" style="color:#38BDF8;">Faster Recovery Window</p></div>', unsafe_allow_html=True)
 with c3:
-    st.markdown(f'<div class="value-blade"><p class="metric-title">Intelligence Multiplier</p><p class="metric-value">{roi_multiplier:,.1f}x</p><p class="metric-sub" style="color:#8B949E;">Return on Data Investment</p></div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="value-blade"><p class="metric-title">Strategic ROI</p><p class="metric-value">{roi_pct:,.0f}%</p><p class="metric-sub" style="color:#8B949E;">Annual Return on Investment</p></div>', unsafe_allow_html=True)
 
 st.markdown("---")
 
+# DATA CURRENCY INSIGHT
+st.markdown(f"### ⏱️ The Criticality of Data Currency")
+st.markdown(f"""
+In a flood event, information decays rapidly. With a **{data_latency} delivery window**, your operational efficiency is 
+at **{efficiency_factor*100:.0f}%** of peak potential. 
+{"⚠️ **Warning:** At 48-72h latency, intelligence becomes purely forensic, providing minimal support for active restoration." if efficiency_factor < 0.5 else "✅ **Optimal:** 6-12h latency provides maximum buy-back for STPIS mitigation and crew safety."}
+""")
+
+
+
 # PILLAR BREAKDOWNS
-st.markdown("### 🧩 Critical Value Drivers")
-
-if enable_aerial:
-    st.markdown(f"""
-    <div class="value-blade">
-    <strong>Module: Aerial Reconnaissance Optimization</strong><br>
-    SAR eliminates the requirement for visual scouting flights. Unlike helicopters, 
-    SAR penetrates 100% cloud cover and functions during 2:00 AM storm surges. 
-    <strong>Offset Value: ${leg_aerial:,.0f}</strong>
-    </div>
-    """, unsafe_allow_html=True)
-    
-
-if enable_field:
-    st.markdown(f"""
-    <div class="value-blade">
-    <strong>Module: Frictionless Field Force Dispatch</strong><br>
-    By identifying 'Ground Truth' inundation lines digitally, the utility prevents 
-    <strong>{wasted_dispatches} zero-value dispatches</strong>. Resources are deployed directly 
-    to high-probability repair sites on Trip 1.
-    </div>
-    """, unsafe_allow_html=True)
-    
-
 if enable_regulatory:
     st.markdown(f"""
     <div class="value-blade">
-    <strong>Module: Regulatory (STPIS) Liability Protection</strong><br>
-    Under AER standards, the outage clock is penalized for every minute of delay. 
-    Accelerating restoration by <strong>{lead_time_hrs} hours</strong> mitigates 
-    <strong>${leg_stpis:,.0f}</strong> in potential service target penalties.
+    <strong>Regulatory Impact (STPIS Liability)</strong><br>
+    The 'Cost of Delay' is quantified by the minutes of outage saved. By delivering ground-truth in {data_latency}, 
+    the utility buys back <strong>{effective_lead_time:.1f} hours</strong> of re-energization time, 
+    mitigating <strong>${(leg_stpis * events_per_year):,.0f}</strong> in annual regulatory penalties.
     </div>
     """, unsafe_allow_html=True)
-    
 
-# AUDIT TABLE
-st.markdown("### 📊 Operational Cost Variance")
+
+
+# FINANCIAL SUMMARY TABLE
+st.markdown("### 📊 Annual Financial Attribution")
 audit_df = pd.DataFrame({
-    "Operational Phase": ["Aerial Reconnaissance", "Wasted Search Phase", "Regulatory Liability", "Repair Dispatch"],
-    "Legacy Model (AUD)": [f"${leg_aerial:,.0f}", f"${(leg_field - sar_field):,.0f}", f"${leg_stpis:,.0f}", f"${sar_field:,.0f}"],
-    "SAR-Enabled Model": ["$0", "$0", "$0 (Accelerated)", f"${sar_field:,.0f}"],
-    "Efficiency Gain": ["-100%", "-100%", "Risk Mitigation", "Direct Precision"]
+    "Component": ["Aerial Reconnaissance", "Wasted Dispatch Labor", "Regulatory (STPIS) Liability", "SAR Subscription Fee"],
+    "Legacy Model (Annual)": [f"${(leg_aerial * events_per_year):,.0f}", f"${((leg_field - sar_field) * events_per_year):,.0f}", f"${(leg_stpis * events_per_year):,.0f}", "$0"],
+    "SAR Model (Annual)": ["$0 (Offset)", "$0 (Optimized)", "$0 (Protected)", f"${sar_annual_sub:,.0f}"],
+    "Strategic Impact": ["100% CAPEX Offset", "Labor Optimization", "Liability Mitigation", "Data ROI Anchor"]
 })
 st.table(audit_df)
 
 # DOWNLOAD
 st.divider()
 st.download_button("📥 DOWNLOAD AUDIT SUMMARY (CSV)", audit_df.to_csv(index=False), use_container_width=True)
-st.markdown("<p style='text-align: center; color: #8B949E; font-size: 0.75rem;'>Benchmarked against Australian Utility Operational Standards © 2026</p>", unsafe_allow_html=True)
