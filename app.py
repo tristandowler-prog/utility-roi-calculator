@@ -2,192 +2,170 @@ import streamlit as st
 import pandas as pd
 
 # --- PAGE SETUP ---
-st.set_page_config(page_title="Strategic ROI Audit | Emergency Response", layout="wide")
+st.set_page_config(page_title="Executive ROI Analysis | Flood Response", layout="wide")
 
-# --- TITAN V4: ULTIMATE FIDELITY DESIGN ---
+# --- INSTITUTIONAL DESIGN SYSTEM (WHITE/GREY/NAVY) ---
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Inter:wght@300;400;600;800&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
     
     .stApp {
-        background: radial-gradient(circle at 20% 30%, #0F172A, #020617);
-        color: #F8FAFC;
+        background-color: #F8FAFC;
+        color: #1E293B;
+        font-family: 'Inter', sans-serif;
     }
     
-    /* Cinematic Glass Card */
-    .titan-card {
-        background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        backdrop-filter: blur(30px);
-        padding: 35px;
-        border-radius: 24px;
-        margin-bottom: 25px;
-        box-shadow: 0 20px 40px rgba(0,0,0,0.4);
-    }
-    
-    .neon-text {
-        color: #00D1FF;
-        text-shadow: 0 0 15px rgba(0, 209, 255, 0.6);
-        font-family: 'Orbitron', sans-serif;
-        letter-spacing: 3px;
-    }
-    
-    .metric-value-titan {
-        font-size: 3.5rem;
-        font-family: 'Orbitron', sans-serif;
-        font-weight: 700;
-        background: linear-gradient(to right, #FFFFFF, #94A3B8);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        line-height: 1.1;
-    }
-    
-    .m-title { font-size: 0.8rem; color: #94A3B8; text-transform: uppercase; letter-spacing: 2px; font-weight: 700; margin-bottom: 5px;}
-    .m-sub { font-size: 0.9rem; color: #00D1FF; font-weight: 600; }
-    
-    .status-badge {
-        background: rgba(0, 209, 255, 0.1);
-        border: 1px solid #00D1FF;
-        color: #00D1FF;
-        padding: 5px 15px;
-        border-radius: 50px;
-        font-size: 0.75rem;
-        font-weight: 700;
-        display: inline-block;
+    /* Executive Card Style */
+    .exec-card {
+        background: #FFFFFF;
+        border: 1px solid #E2E8F0;
+        padding: 25px;
+        border-radius: 12px;
         margin-bottom: 20px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
     }
+    
+    .section-header {
+        color: #0F172A;
+        font-weight: 700;
+        font-size: 1.1rem;
+        border-bottom: 2px solid #E2E8F0;
+        padding-bottom: 8px;
+        margin-bottom: 15px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+    
+    .metric-label {
+        color: #64748B;
+        font-size: 0.85rem;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+    
+    .metric-value-large {
+        font-size: 2.5rem;
+        font-weight: 800;
+        color: #1E293B;
+        line-height: 1;
+        margin: 10px 0;
+    }
+    
+    .roi-positive { color: #059669; }
+    .roi-negative { color: #DC2626; }
+    
+    /* Clean Sidebar */
+    .css-1d391kg { background-color: #FFFFFF; border-right: 1px solid #E2E8F0; }
 </style>
 """, unsafe_allow_html=True)
 
-# --- GLOBAL SIDEBAR ---
+# --- SIDEBAR: SYSTEM PARAMETERS ---
 with st.sidebar:
-    st.markdown("<h2 class='neon-text'>CALIBRATION</h2>", unsafe_allow_html=True)
-    st.markdown("### 🏦 Investment")
-    sub_cost = st.number_input("Annual Data Subscription ($)", value=150000)
-    events_per_year = st.slider("Annual Major Events", 1, 12, 4)
-    
+    st.markdown("### 🏦 CAPITAL ALLOCATION")
+    annual_sub = st.number_input("Annual Solution Investment ($)", value=150000)
+    event_freq = st.slider("Annual Major Events", 1, 8, 3)
     st.divider()
-    st.markdown("### 🛰️ Solution Latency")
-    sar_latency = st.slider("Data Delivery Window (Hrs)", 6, 24, 12)
-    st.info("The logic below calculates the 'Net Yield' by replacing variable operational waste with this fixed technology investment.")
+    st.markdown("### ⚡ EFFICIENCY TARGETS")
+    sar_latency = st.slider("Data Latency (Hrs)", 4, 12, 6)
+    precision_rate = st.slider("Dispatch Precision (%)", 60, 100, 95)
 
 # --- HEADER ---
-st.markdown("<div style='text-align: center; padding: 60px 0 40px 0;'>", unsafe_allow_html=True)
-st.markdown("<div class='status-badge'>DETERMINISTIC RESPONSE MODEL v4.0</div>", unsafe_allow_html=True)
-st.markdown("<h1 style='font-family: \"Orbitron\", sans-serif; font-size: 3.5rem; margin-top: -10px;'>Emergency Response ROI Analysis</h1>", unsafe_allow_html=True)
-st.markdown("<p style='color: #94A3B8; font-size: 1.1rem; letter-spacing: 1px;'>Operational Velocity & Macro-Economic Resilience Audit</p>", unsafe_allow_html=True)
+st.markdown("<div style='padding: 20px 0;'>", unsafe_allow_html=True)
+st.markdown("<h2 style='color: #64748B; font-weight: 400; margin-bottom: 0;'>STRATEGIC AUDIT</h2>", unsafe_allow_html=True)
+st.markdown("<h1 style='font-size: 2.8rem; margin-top: 0; color: #0F172A;'>Flood Response Economic Impact</h1>", unsafe_allow_html=True)
 st.markdown("</div>", unsafe_allow_html=True)
 
 # ==========================================
-# MECHANICAL INPUTS
+# OPERATIONAL INPUTS (EXECUTIVE GRID)
 # ==========================================
-st.markdown("<div class='titan-card'>", unsafe_allow_html=True)
 c1, c2, c3 = st.columns(3)
 
 with c1:
-    st.markdown("<h4 class='neon-text' style='font-size: 1.1rem;'>🚁 LEGACY RECON</h4>", unsafe_allow_html=True)
-    heli_rate = st.number_input("Heli Charter Rate ($/hr)", value=3500)
-    heli_hrs = st.number_input("Active Recon Hrs / Day", value=10)
-    cloud_delay_hrs = st.slider("Cloud Grounding Delay (Hrs)", 12, 120, 72)
+    st.markdown("<div class='exec-card'>", unsafe_allow_html=True)
+    st.markdown("<p class='section-header'>🚁 Aviation & Recon</p>", unsafe_allow_html=True)
+    heli_rate = st.number_input("Heli Charter ($/hr)", value=3500)
+    cloud_window = st.slider("Visual Blindness (Hrs)", 12, 96, 48, help="Cloud grounding period")
+    drone_rate = st.number_input("Drone Team Standby ($/day)", value=2200)
+    st.markdown("</div>", unsafe_allow_html=True)
 
 with c2:
-    st.markdown("<h4 class='neon-text' style='font-size: 1.1rem;'>🚛 FIELD DYNAMICS</h4>", unsafe_allow_html=True)
-    crew_daily = st.number_input("Personnel Day Rate ($)", value=450)
-    crew_vol = st.number_input("Total Responder Volume", value=100)
-    precision_gain = st.slider("Dispatch Precision (%)", 50, 100, 90)
+    st.markdown("<div class='exec-card'>", unsafe_allow_html=True)
+    st.markdown("<p class='section-header'>🚛 Strike Team Ops</p>", unsafe_allow_html=True)
+    team_burn = st.number_input("Team Daily Burn ($)", value=12500)
+    team_count = st.number_input("Active Strike Teams", value=6)
+    dry_run_cost = st.number_input("Dry Run Penalty ($/unit)", value=2800)
+    dry_run_freq = st.slider("Dry Runs Per Event", 0, 20, 8)
+    st.markdown("</div>", unsafe_allow_html=True)
 
 with c3:
-    st.markdown("<h4 class='neon-text' style='font-size: 1.1rem;'>🛣️ ECONOMIC FRICTION</h4>", unsafe_allow_html=True)
+    st.markdown("<div class='exec-card'>", unsafe_allow_html=True)
+    st.markdown("<p class='section-header'>🛣️ Logistics & GIS</p>", unsafe_allow_html=True)
     freight_loss = st.number_input("Freight Loss ($/hr/road)", value=15000)
     hwy_count = st.number_input("Critical Corridors", value=2)
-    legacy_verify_days = st.slider("Legacy Verification (Days)", 3, 21, 10)
-    target_recovery_days = st.slider("Targeted Recovery (Days)", 1, 10, 2)
-st.markdown("</div>", unsafe_allow_html=True)
+    gis_processing = st.slider("GIS Manual Labor (Hrs)", 2, 24, 8)
+    st.markdown("</div>", unsafe_allow_html=True)
 
 # ==========================================
-# THE ENGINE: TRUTH VS. ASSUMPTION
+# CALCULATION LOGIC
 # ==========================================
 
-# -- 1. LEGACY COSTS (The "Before" State) --
-# Per Event
-leg_aviation_event = (heli_rate * heli_hrs * (cloud_delay_hrs / 24))
-leg_personnel_event = (crew_vol * crew_daily * (cloud_delay_hrs / 24))
-leg_time_total = cloud_delay_hrs + (legacy_verify_days * 24)
-leg_freight_event = (freight_loss * hwy_count * leg_time_total)
+# 1. Aviation Costs
+leg_aviation = (heli_rate * 10 * (cloud_window/24)) + (drone_rate * (cloud_window/24))
+fut_aviation = 0 
 
-total_legacy_annual = (leg_aviation_event + leg_personnel_event + leg_freight_event) * events_per_year
+# 2. Strike Team Costs
+leg_teams = (team_count * team_burn * (cloud_window/24)) + (dry_run_freq * dry_run_cost)
+# SAR allows deterministic tasking; dry runs drop by 90%
+fut_teams = (team_count * team_burn * (sar_latency/24)) + (dry_run_freq * 0.1 * dry_run_cost)
 
-# -- 2. FUTURE COSTS (The "Deterministic" State) --
-# Note: Aviation is $0 because SAR replaces it. Data cost is the Subscription (sub_cost).
-fut_aviation_event = 0
-# Personnel are deployed during the storm (bypassing cloud delay) but only for the latency window
-fut_personnel_event = (crew_vol * crew_daily * (sar_latency / 24)) * (1 - (precision_gain/100))
-fut_time_total = sar_latency + (target_recovery_days * 24)
-fut_freight_event = (freight_loss * hwy_count * fut_time_total)
+# 3. Logistics Costs (The Verification Gap)
+leg_gap = cloud_window + gis_processing
+fut_gap = sar_latency
+leg_logistics = (freight_loss * hwy_count * leg_gap)
+fut_logistics = (freight_loss * hwy_count * fut_gap)
 
-# Annual Total: (Variable Event Costs * Frequency) + Fixed Subscription
-total_future_annual = ((fut_aviation_event + fut_personnel_event + fut_freight_event) * events_per_year) + sub_cost
-
-# -- 3. RESULTS --
-annual_net_saving = total_legacy_annual - total_future_annual
+# 4. Net Position
+per_event_saving = (leg_aviation + leg_teams + leg_logistics) - (fut_aviation + fut_teams + fut_logistics)
+annual_net_saving = (per_event_saving * event_freq) - annual_sub
 
 # ==========================================
-# THE ROI DASHBOARD (HIGH POP)
+# RESULTS DASHBOARD
 # ==========================================
-m1, m2, m3 = st.columns([1, 1, 1.5])
+st.markdown("<p class='section-header'>Annual Financial Performance</p>", unsafe_allow_html=True)
+m1, m2, m3, m4 = st.columns(4)
 
 with m1:
-    st.markdown(f"""
-    <div class='titan-card' style='border-left: 4px solid #F87171;'>
-        <p class='m-title'>Legacy OpEx (Annual)</p>
-        <p class='metric-value-titan' style='color: #F87171;'>${total_legacy_annual/1e6:.1f}M</p>
-        <p class='m-sub'>Probabilistic Model</p>
-    </div>
-    """, unsafe_allow_html=True)
-
+    st.markdown(f"<div class='exec-card'><p class='metric-label'>Aviation Offset</p><p class='metric-value-large'>${(leg_aviation * event_freq)/1e3:.0f}K</p></div>", unsafe_allow_html=True)
 with m2:
-    st.markdown(f"""
-    <div class='titan-card' style='border-left: 4px solid #00D1FF;'>
-        <p class='m-title'>Future OpEx (Annual)</p>
-        <p class='metric-value-titan' style='color: #00D1FF;'>${total_future_annual/1e6:.1f}M</p>
-        <p class='m-sub'>Inc. ${sub_cost/1e3:.0f}K Subscription</p>
-    </div>
-    """, unsafe_allow_html=True)
-
+    st.markdown(f"<div class='exec-card'><p class='metric-label'>Ops Efficiency</p><p class='metric-value-large'>${((leg_teams - fut_teams) * event_freq)/1e3:.0f}K</p></div>", unsafe_allow_html=True)
 with m3:
-    st.markdown(f"""
-    <div class='titan-card' style='border-left: 4px solid #10B981; background: rgba(16, 185, 129, 0.05);'>
-        <p class='m-title'>Net Strategic Yield</p>
-        <p class='metric-value-titan' style='color: #10B981;'>${annual_net_saving/1e6:.2f}M</p>
-        <p class='m-sub'>Post-Investment Profitability</p>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown(f"<div class='exec-card'><p class='metric-label'>Logistics Recovery</p><p class='metric-value-large'>${((leg_logistics - fut_logistics) * event_freq)/1e6:.1f}M</p></div>", unsafe_allow_html=True)
+with m4:
+    st.markdown(f"<div class='exec-card'><p class='metric-label'>Net Annual ROI</p><p class='metric-value-large roi-positive'>${annual_net_saving/1e6:.2f}M</p></div>", unsafe_allow_html=True)
 
-# ==========================================
-# DATA VISUALS & AUDIT
-# ==========================================
-st.markdown("### 📊 Financial Attribution")
-col_chart, col_audit = st.columns([2, 1])
+# --- STRATEGIC VISUALS ---
+st.markdown("### Decision Latency Impact")
+v1, v2 = st.columns([2, 1])
 
-with col_chart:
-    st.markdown("<div class='titan-card' style='padding: 20px;'>", unsafe_allow_html=True)
-    # Comparison Data for the Chart
+with v1:
+    st.markdown("<div class='exec-card'>", unsafe_allow_html=True)
     chart_data = pd.DataFrame({
-        "Category": ["Aviation", "Field Personnel", "Economic Friction", "Tech Subscription"],
-        "Legacy ($)": [(leg_aviation_event * events_per_year), (leg_personnel_event * events_per_year), (leg_freight_event * events_per_year), 0],
-        "Future ($)": [0, (fut_personnel_event * events_per_year), (fut_freight_event * events_per_year), sub_cost]
+        "Category": ["Aviation Ops", "Strike Team Waste", "Freight Downtime"],
+        "Legacy (Visual Dependent)": [leg_aviation, leg_teams, leg_logistics],
+        "Deterministic (ICEYE)": [fut_aviation, fut_teams, fut_logistics]
     }).set_index("Category")
     st.bar_chart(chart_data, height=350)
     st.markdown("</div>", unsafe_allow_html=True)
 
-with col_audit:
-    st.markdown("<div class='titan-card' style='height: 100%;'>", unsafe_allow_html=True)
-    st.markdown("<h4 class='neon-text' style='font-size: 0.9rem;'>MECHANICAL AUDIT</h4>", unsafe_allow_html=True)
+with v2:
+    st.markdown("<div class='exec-card' style='height: 100%;'>", unsafe_allow_html=True)
+    st.markdown("<p class='section-header'>Summary</p>", unsafe_allow_html=True)
     st.write(f"""
-    - **Cloud Delay Offset:** SAR eliminates the {cloud_delay_hrs}-hour blind window, stopping helis from sitting on standby.
-    - **Precision Advantage:** {precision_gain}% reduction in field personnel burn through targeted data.
-    - **Economic Delta:** By reopening highways in {target_recovery_days} days instead of {legacy_verify_days}, you recover **{((leg_time_total - fut_time_total) * events_per_year)} hours** of freight movement annually.
+    By bypassing the **{cloud_window}-hour visual blind spot**, the response moves from reactive searching to deterministic execution.
+    
+    **Key Lever:** The "Verification Gap" for major corridors is reduced from **{leg_gap} hours** to **{fut_gap} hours**, 
+    recovering **${(leg_logistics - fut_logistics)/1e6:.1f}M** in economic productivity per event.
     """)
     st.markdown("</div>", unsafe_allow_html=True)
 
-st.markdown("<p style='text-align: center; color: #475569; padding: 40px; letter-spacing: 2px;'>CONFIDENTIAL STRATEGIC AUDIT | PREPARED FOR EXECUTIVE LEADERSHIP</p>", unsafe_allow_html=True)
+st.markdown("<p style='text-align: center; color: #94A3B8; font-size: 0.8rem; padding: 40px;'>CONFIDENTIAL STRATEGIC ANALYSIS | PREPARED FOR EXECUTIVE LEADERSHIP</p>", unsafe_allow_html=True)
