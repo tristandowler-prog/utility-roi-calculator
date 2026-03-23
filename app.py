@@ -2,110 +2,111 @@ import streamlit as st
 import pandas as pd
 
 # --- PAGE SETUP ---
-st.set_page_config(page_title="ICEYE ROI Audit", layout="wide")
+st.set_page_config(page_title="ICEYE ROI Precision Audit", layout="wide")
 
-# --- HIGH-CONTRAST "AUDIT" STYLING (BLACK & WHITE) ---
+# --- HIGH-CONTRAST "REPORT" STYLING ---
 st.markdown("""
 <style>
     .stApp { background-color: #FFFFFF !important; color: #000000 !important; }
-    .stMetric { border: 2px solid #000000; padding: 15px; background-color: #F8F9FA; }
     .roi-hero { 
-        background-color: #000000; 
-        color: #FFFFFF !important; 
-        padding: 30px; 
-        text-align: center; 
-        border-radius: 8px;
-        margin-bottom: 25px;
+        background-color: #000000; color: #FFFFFF !important; 
+        padding: 25px; text-align: center; border-radius: 4px; margin-bottom: 20px;
     }
     .roi-hero h1, .roi-hero p { color: #FFFFFF !important; margin: 0; }
-    label, p, h3 { color: #000000 !important; font-weight: 700 !important; }
+    label, p, h3, h4 { color: #111111 !important; font-weight: 700 !important; }
+    .stNumberInput div div input { color: #000000 !important; }
 </style>
 """, unsafe_allow_html=True)
 
-# --- 1. GLOBAL INVESTMENT (TOP OF APP) ---
-st.title("Emergency Response ROI Analysis")
+st.title("Emergency Response ROI: ICEYE vs. Legacy")
 
-# Define these first so we can use them in the Hero section
+# --- 1. INVESTMENT & FREQUENCY ---
 col_inv1, col_inv2, col_inv3 = st.columns(3)
 with col_inv1:
-    annual_sub = st.number_input("ICEYE Annual Subscription ($)", value=150000, step=10000)
+    annual_sub = st.number_input("ICEYE Annual Subscription ($)", value=150000.00, step=1000.00, format="%.2f")
 with col_inv2:
-    events_pa = st.number_input("Major Flood Events Per Year", value=3)
+    events_pa = st.number_input("Major Flood Events Per Year", value=3.0, step=1.0)
 with col_inv3:
-    sar_latency = st.number_input("ICEYE Data Delivery (Hrs)", value=6)
+    sar_latency = st.number_input("ICEYE Data Delivery (Hrs)", value=6.0, step=0.5)
 
 # --- 2. OPERATIONAL INPUTS (MANUAL OVERRIDES) ---
-st.markdown("### 🛠️ Step 1: Define Current Legacy Costs (Manual Overrides)")
+st.markdown("### 🛠️ Step 1: Manual Overrides (Legacy Costs)")
 c1, c2, c3 = st.columns(3)
 
 with c1:
-    st.markdown("#### Aviation & Recon")
-    heli_rate = st.number_input("Heli Rate ($/hr)", value=3500)
-    heli_hrs = st.number_input("Recon Hrs/Event", value=40)
-    drone_daily = st.number_input("Drone Daily ($)", value=2200)
-    drone_days = st.number_input("Drone Days", value=5)
-
+    st.markdown("#### 🚁 Aviation & Recon")
+    heli_rate = st.number_input("Heli Charter ($/hr)", value=3500.00, step=50.00, format="%.2f")
+    heli_recon_hrs = st.number_input("Total Flight Hrs/Event", value=20.0, step=1.0)
+    drone_daily = st.number_input("Drone Team Daily Rate ($)", value=2200.00, step=50.00, format="%.2f")
+    cloud_window_days = st.number_input("Cloud/Wait Window (Days)", value=2.0, step=0.25)
+    
 with c2:
-    st.markdown("#### Field Personnel")
-    team_count = st.number_input("Strike Teams", value=6)
-    team_burn = st.number_input("Daily Team Burn ($)", value=12500)
-    dry_run_penalty = st.number_input("Dry Run Penalty ($)", value=2800)
-    dry_runs_saved = st.number_input("Dry Runs Prevented", value=10)
+    st.markdown("#### 🚛 Field Personnel (Strike Teams)")
+    team_count = st.number_input("Number of Strike Teams", value=6.0, step=1.0)
+    team_daily_burn = st.number_input("Daily Team Burn ($)", value=12500.00, step=100.00, format="%.2f")
+    dry_run_cost = st.number_input("Dry Run Penalty ($/trip)", value=2800.00, step=50.00, format="%.2f")
+    dry_runs_event = st.number_input("Dry Runs Prevented/Event", value=10.0, step=1.0)
 
 with c3:
-    st.markdown("#### Infrastructure & GIS")
-    cloud_window = st.number_input("Cloud Blindness (Hrs)", value=48)
-    hwy_loss_hr = st.number_input("Hwy Loss ($/hr)", value=15000)
-    hwy_count = st.number_input("No. of Highways", value=2)
-    gis_process_hrs = st.number_input("GIS Processing (Hrs)", value=8)
-    gis_staff_cost = st.number_input("GIS Staff/Hr Total ($)", value=240) # 2 staff x $120
+    st.markdown("#### 🖥️ GIS & Information Analysis")
+    gis_hourly_rate = st.number_input("GIS Staff Hourly Rate ($/hr)", value=120.00, step=5.00, format="%.2f")
+    gis_staff_count = st.number_input("Number of GIS Staff", value=2.0, step=1.0)
+    gis_processing_hrs = st.number_input("Manual Mapping Time (Hrs)", value=8.0, step=0.5)
+    
+    st.markdown("#### 🛣️ Logistics & Freight")
+    hwy_loss_hr = st.number_input("Freight Loss per Hwy ($/hr)", value=15000.00, step=500.00, format="%.2f")
+    hwy_count = st.number_input("No. of Major Highways", value=2.0, step=1.0)
 
 # --- 3. THE CALCULATION ENGINE ---
-# Legacy Time Gap
-leg_wait = cloud_window + gis_process_hrs
-time_recovered = leg_wait - sar_latency
 
-# Legacy Costs (Per Event)
-leg_recon = (heli_rate * heli_hrs) + (drone_daily * drone_days)
-leg_gis = (gis_process_hrs * gis_staff_cost)
-leg_personnel = (team_count * team_burn * (cloud_window/24)) + (dry_runs_saved * dry_run_penalty)
-leg_logistics = (hwy_loss_hr * hwy_count * leg_wait)
+# TIME RECOVERED
+leg_wait_total_hrs = (cloud_window_days * 24.0) + gis_processing_hrs
+time_recovered_hrs = leg_wait_total_hrs - sar_latency
 
-# ICEYE Costs (Per Event)
-iceye_personnel = (team_count * team_burn * (sar_latency/24))
-iceye_logistics = (hwy_loss_hr * hwy_count * sar_latency)
+# LEGACY COSTS (Per Event)
+# Aviation: Flight time + Drone standby for duration of blind window
+leg_aviation_total = (heli_rate * heli_recon_hrs) + (drone_daily * cloud_window_days)
+# GIS: Staff * Rate * Hours
+leg_gis_total = (gis_staff_count * gis_hourly_rate * gis_processing_hrs)
+# Personnel: Idle Burn + Dry Runs
+leg_personnel_total = (team_count * team_daily_burn * cloud_window_days) + (dry_runs_event * dry_run_penalty)
+# Freight: Loss * Highways * Total Wait Time
+leg_logistics_total = (hwy_loss_hr * hwy_count * leg_wait_total_hrs)
+
+# ICEYE COSTS (Per Event)
+# Personnel: Only idle for SAR latency period
+iceye_personnel_total = (team_count * team_daily_burn * (sar_latency / 24.0))
+# Logistics: Only closed for SAR latency period
+iceye_logistics_total = (hwy_loss_hr * hwy_count * sar_latency)
 
 # ANNUAL AGGREGATES
-total_legacy_annual = (leg_recon + leg_gis + leg_personnel + leg_logistics) * events_pa
-total_iceye_annual = ((iceye_personnel + iceye_logistics) * events_pa) + annual_sub
+annual_legacy = (leg_aviation_total + leg_gis_total + leg_personnel_total + leg_logistics_total) * events_pa
+annual_iceye = ((iceye_personnel_total + iceye_logistics_total) * events_pa) + annual_sub
 
-net_annual_roi = total_legacy_annual - total_iceye_annual
+net_annual_profit = annual_legacy - annual_iceye
 
-# --- 4. THE BOTTOM LINE (NOW AT THE TOP) ---
+# --- 4. TOP-LEVEL RESULTS ---
 st.markdown("---")
 st.markdown(f"""
 <div class='roi-hero'>
-    <p>TOTAL NET ANNUAL SAVING / PROFIT</p>
-    <h1>${net_annual_roi/1e6:.2f} Million</h1>
-    <p>Bypassing {time_recovered} hours of visual blindness per event</p>
+    <p>TOTAL NET ANNUAL RECOVERY (PROFIT)</p>
+    <h1>${net_annual_profit:,.2f}</h1>
+    <p>Acceleration of Actionable Intelligence by {time_recovered_hrs:.1f} hours per event</p>
 </div>
 """, unsafe_allow_html=True)
 
-# --- 5. VISUAL PROOF (UPDATED CHART) ---
-st.markdown("### 📊 Annualized Cost Comparison")
-
-# Splitting the subscription cost across the categories for the chart 
-# or showing it as a standalone "Investment" bar
+# --- 5. VISUAL CHART ---
 chart_df = pd.DataFrame({
-    "Cost Category": ["Aviation & GIS", "Field Personnel", "Freight Logistics", "Solution Investment"],
-    "Legacy Model ($)": [(leg_recon + leg_gis) * events_pa, leg_personnel * events_pa, leg_logistics * events_pa, 0],
-    "ICEYE Model ($)": [0, iceye_personnel * events_pa, iceye_logistics * events_pa, annual_sub]
-}).set_index("Cost Category")
+    "Category": ["Aviation & GIS", "Strike Teams", "Freight Logistics", "Solution Investment"],
+    "Legacy Model ($)": [(leg_aviation_total + leg_gis_total) * events_pa, leg_personnel_total * events_pa, leg_logistics_total * events_pa, 0.0],
+    "ICEYE Model ($)": [0.0, iceye_personnel_total * events_pa, iceye_logistics_total * events_pa, annual_sub]
+}).set_index("Category")
 
 st.bar_chart(chart_df, height=400)
 
 st.write(f"""
-**Technical Summary:**
-By investing **${annual_sub/1e3:.0f}k** annually, the organization eliminates **${(leg_recon + leg_gis)*events_pa/1e3:.0f}k** in redundant reconnaissance 
-and recovers **${(leg_logistics - iceye_logistics)*events_pa/1e6:.1f}M** in economic productivity by shortening the highway verification window by **{time_recovered} hours**.
+### Defensible Logic Audit:
+* **Aviation & GIS Offset:** Replaces **${leg_aviation_total*events_pa:,.2f}** in field recon and **${leg_gis_total*events_pa:,.2f}** in manual data labor annually.
+* **Personnel Efficiency:** Saves **${(leg_personnel_total - iceye_personnel_total)*events_pa:,.2f}** by eliminating idle strike-team time and preventing **{dry_runs_event * events_pa:.0f}** failed deployments.
+* **Economic Recovery:** Accelerating highway reopening by **{time_recovered_hrs:.1f} hours** recovers **${(leg_logistics_total - iceye_logistics_total)*events_pa:,.2f}** in regional freight productivity.
 """)
