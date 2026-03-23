@@ -1,14 +1,14 @@
 import streamlit as st
 import pandas as pd
 
-# 1. SETUP - No custom CSS. No HTML. Standard Streamlit only for 100% visibility.
-st.set_page_config(page_title="ICEYE ROI Master Audit", layout="wide")
+# 1. SETUP - Absolute standard Streamlit for 100% text visibility.
+st.set_page_config(page_title="ICEYE ROI: Emergency Management", layout="wide")
 
-st.title("ICEYE Flood Solutions: Operational ROI Ledger")
-st.write("A verified financial model scaling per-event operational costs against a fixed ICEYE subscription.")
+st.title("ICEYE Flood Solutions: Operational Efficiency Audit")
+st.write("Focused on Resource Recovery: Transitioning GIS and Field Teams from 'Data Processing' to 'Actionable Response'.")
 
-# 2. SYSTEM PARAMETERS
-st.subheader("1. Global Constants")
+# 2. GLOBAL PARAMETERS
+st.subheader("1. System Parameters")
 col_sys1, col_sys2, col_sys3 = st.columns(3)
 with col_sys1:
     annual_sub = st.number_input("Annual ICEYE Subscription ($)", value=150000.00, format="%.2f")
@@ -19,100 +19,88 @@ with col_sys3:
 
 st.divider()
 
-# 3. PER-EVENT INPUTS (The Manual Overrides)
-st.subheader("2. Per-Event Operational Costs")
+# 3. PER-EVENT OPERATIONAL LEDGER
+st.subheader("2. Per-Event Operational Ledger (Manual Overrides)")
 c1, c2, c3 = st.columns(3)
 
 with c1:
-    st.write("### 🚁 Aviation & Drone")
-    # Heli
+    st.write("### 🚁 Aviation & Recon (Per Event)")
     heli_rate = st.number_input("Heli Flight Rate ($/hr)", value=3500.00, format="%.2f")
-    heli_hrs = st.number_input("Heli Flight Hrs / Event", value=20.0)
-    heli_standby = st.number_input("Heli Daily Standby ($)", value=1500.00, format="%.2f")
-    # Drone
-    drone_rate = st.number_input("Drone Flight Rate ($/hr)", value=250.00, format="%.2f")
+    heli_hrs = st.number_input("Heli Flight Hrs (Recon Only)", value=20.0)
+    heli_standby = st.number_input("Heli Daily Standby Fee ($)", value=1500.00, format="%.2f")
+    
+    st.write("---")
+    drone_rate = st.number_input("Drone Team Flight Rate ($/hr)", value=250.00, format="%.2f")
     drone_hrs = st.number_input("Drone Flight Hrs / Event", value=15.0)
-    drone_standby = st.number_input("Drone Daily Standby ($)", value=1200.00, format="%.2f")
-    # Weather Gap
-    cloud_wait_days = st.number_input("Cloud / Visual Blind Window (Days)", value=2.0)
+    drone_standby = st.number_input("Drone Daily Standby Fee ($)", value=1200.00, format="%.2f")
 
 with c2:
-    st.write("### 🚛 Field Personnel")
-    team_count = st.number_input("Active Strike Teams", value=6.0)
+    st.write("### 🚛 Field Strike Teams (Per Event)")
+    team_count = st.number_input("Number of Active Teams", value=6.0)
     team_daily_burn = st.number_input("Daily Team Operating Burn ($)", value=12500.00, format="%.2f")
-    dry_run_penalty = st.number_input("Dry Run Penalty ($/trip)", value=2800.00, format="%.2f")
-    dry_runs_per_event = st.number_input("Wasted Trips (Dry Runs) / Event", value=10.0)
+    cloud_wait_days = st.number_input("Blind Window (Cloud/Night Days)", value=2.0)
+    
+    st.write("---")
+    dry_run_penalty = st.number_input("Dry Run Penalty (Wasted Shift/Fuel) ($)", value=2800.00, format="%.2f")
+    dry_runs_per_event = st.number_input("Wasted Deployments / Event", value=10.0)
 
 with c3:
-    st.write("### 🖥️ GIS & Infrastructure")
-    # GIS STAFFING - RESTORED AND VERIFIED
+    st.write("### 🖥️ GIS Staff Utility (Per Event)")
     gis_staff_count = st.number_input("Number of GIS Staff", value=2.0)
     gis_hourly_rate = st.number_input("GIS Staff Hourly Rate ($/hr)", value=120.00, format="%.2f")
-    gis_hrs_per_event = st.number_input("Manual Mapping Time (Hrs) / Event", value=8.0)
-    # LOGISTICS
-    hwy_loss_hr = st.number_input("Freight Loss per Hwy ($/hr)", value=15000.00, format="%.2f")
-    hwy_count = st.number_input("Impacted Major Highways", value=2.0)
+    
+    st.write("---")
+    st.write("**Legacy Mapping Workflow:**")
+    leg_processing_hrs = st.number_input("Manual Mapping/Cleaning (Hrs)", value=12.0)
+    
+    st.write("**ICEYE Mapping Workflow:**")
+    iceye_processing_hrs = st.number_input("Actionable Prep Time (Hrs)", value=2.0)
 
-# 4. MATH ENGINE (SCALING LINEARLY)
+# 4. THE MATH ENGINE
 
-# --- LEGACY CALCULATIONS (PER EVENT) ---
-# Aviation = Flight time + Standby while waiting for clouds
-leg_aviation_event = (heli_rate * heli_hrs) + (heli_standby * cloud_wait_days) + \
-                     (drone_rate * drone_hrs) + (drone_standby * cloud_wait_days)
+# LEGACY (Per Event)
+leg_air = (heli_rate * heli_hrs) + (heli_standby * cloud_wait_days) + \
+          (drone_rate * drone_hrs) + (drone_standby * cloud_wait_days)
 
-# GIS = Staff x Rate x Hours
-leg_gis_event = (gis_staff_count * gis_hourly_rate * gis_hrs_per_event)
+leg_gis = (gis_staff_count * gis_hourly_rate * leg_processing_hrs)
 
-# Personnel = (Team Burn * Days spent blind) + (Cost of Dry Runs)
-leg_personnel_event = (team_count * team_daily_burn * cloud_wait_days) + (dry_runs_per_event * dry_run_penalty)
+# Field Personnel: Burn during blind window + Wasted dry runs
+leg_field_waste = (team_count * team_daily_burn * cloud_wait_days) + (dry_runs_per_event * dry_run_penalty)
 
-# Logistics = Highway Loss * Count * (Cloud Days + Mapping Time)
-leg_wait_total_hrs = (cloud_wait_days * 24.0) + gis_hrs_per_event
-leg_logistics_event = (hwy_loss_hr * hwy_count * leg_wait_total_hrs)
+# ICEYE (Per Event)
+# ICEYE eliminates aviation recon. 
+# GIS staff still work, but only for the prep time (2 hrs vs 12 hrs).
+iceye_gis = (gis_staff_count * gis_hourly_rate * iceye_processing_hrs)
 
-# --- ICEYE CALCULATIONS (PER EVENT) ---
-# ICEYE replaces aviation recon and manual mapping.
-# Personnel and Logistics only wait for the SAR latency (e.g. 6 hrs).
-iceye_personnel_event = (team_count * team_daily_burn * (sar_latency / 24.0))
-iceye_logistics_event = (hwy_loss_hr * hwy_count * sar_latency)
+# Personnel: Only "wait" for data latency (6 hrs) instead of 2 days.
+iceye_field_waste = (team_count * team_daily_burn * (sar_latency / 24.0))
 
-# --- ANNUAL TOTALS ---
-total_annual_legacy = (leg_aviation_event + leg_gis_event + leg_personnel_event + leg_logistics_event) * events_pa
-total_annual_iceye = ((iceye_personnel_event + iceye_logistics_event) * events_pa) + annual_sub
-net_annual_roi = total_annual_legacy - total_annual_iceye
+# ANNUAL TOTALS
+total_annual_legacy = (leg_air + leg_gis + leg_field_waste) * events_pa
+total_annual_iceye = ((iceye_gis + iceye_field_waste) * events_pa) + annual_sub
+net_annual_recovery = total_annual_legacy - total_annual_iceye
 
-# 5. RESULTS DISPLAY
+# 5. RESULTS
 st.divider()
-st.subheader("3. Strategic Impact (Annualized)")
+st.subheader("3. Resource Recovery Impact (Annualized)")
 r1, r2, r3 = st.columns(3)
-r1.metric("Net Annual Recovery (ROI)", f"${net_annual_roi:,.2f}")
-r2.metric("Annual GIS Costs Removed", f"${leg_gis_event * events_pa:,.2f}")
-r3.metric("Annual Legacy Spend", f"${total_annual_legacy:,.2f}")
+r1.metric("Net Operational Recovery", f"${net_annual_recovery:,.2f}")
+r2.metric("Annual GIS Time Recovered", f"{(leg_processing_hrs - iceye_processing_hrs) * events_pa:.1f} Hours")
+r3.metric("Annual Aviation Offset", f"${leg_air * events_pa:,.2f}")
 
-# 6. VISUAL CHART
-st.markdown("### 📊 Annual Cost Distribution")
+# 6. CHART
+st.markdown("### 📊 Annual Resource Cost Distribution")
 chart_data = {
-    "Category": ["Aviation Recon", "GIS Analysis", "Field Personnel", "Logistics & Freight", "ICEYE Sub"],
-    "Legacy Model ($)": [
-        leg_aviation_event * events_pa,
-        leg_gis_event * events_pa,
-        leg_personnel_event * events_pa,
-        leg_logistics_event * events_pa,
-        0.0
-    ],
-    "ICEYE Model ($)": [
-        0.0, 0.0, 
-        iceye_personnel_event * events_pa,
-        iceye_logistics_event * events_pa,
-        annual_sub
-    ]
+    "Category": ["Aviation Recon", "GIS Manual Labor", "Field Readiness Waste", "ICEYE Subscription"],
+    "Legacy Model ($)": [leg_air*events_pa, leg_gis*events_pa, leg_field_waste*events_pa, 0],
+    "ICEYE Model ($)": [0, iceye_gis*events_pa, iceye_field_waste*events_pa, annual_sub]
 }
 df_chart = pd.DataFrame(chart_data).set_index("Category")
 st.bar_chart(df_chart, height=450)
 
-# 7. BUSINESS CASE FINDINGS
+# 7. BUSINESS CASE FOR THE EM
 st.divider()
-st.subheader("4. Key Takeaways")
-st.write(f"**GIS Efficiency:** Manual processing by **{gis_staff_count:.0f} staff** currently consumes **{gis_hrs_per_event * events_pa:.1f} hours** of labor annually. ICEYE provides analysis-ready data, bypassing this manual bottleneck.")
-st.write(f"**Aviation Waste:** You are paying **${(heli_standby + drone_standby) * cloud_wait_days * events_pa:,.2f}** per year in 'Weather Standby' fees for visual assets that cannot see through clouds.")
-st.write(f"**Time Advantage:** SAR intelligence recovers **{leg_wait_total_hrs - sar_latency:.1f} hours** of operational lead time per flood event.")
+st.subheader("4. Operational Audit Findings")
+st.write(f"**GIS Value Transition:** Your GIS team currently spends **{leg_processing_hrs * events_pa:.0f} hours** per year manually cleaning data. ICEYE reduces this to **{iceye_processing_hrs * events_pa:.0f} hours**, allowing staff to focus on critical situational analysis.")
+st.write(f"**Removing the 'Blind Window':** By eliminating the **{cloud_wait_days} day** wait for visual recon, you recover **${(leg_field_waste - iceye_field_waste) * events_pa:,.2f}** in annual team productivity that is currently lost to idleness and dry runs.")
+st.write(f"**Deterministic Intelligence:** ICEYE replaces variable, weather-dependent costs (Aviation) with a fixed **${annual_sub:,.2f}** line item, providing flood extent data through clouds and night every **{sar_latency} hours**.")
