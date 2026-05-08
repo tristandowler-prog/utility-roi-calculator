@@ -12,7 +12,7 @@ st.set_page_config(
 )
 
 # =========================================================
-# THEME & CSS (Same as your previous version)
+# THEME & CSS
 # =========================================================
 
 BG = "#0B1220"
@@ -64,90 +64,65 @@ st.title("Strategic ROI & Operational Impact")
 st.markdown(f'<div style="padding-bottom: 24px; color: {MUTED}; font-size: 1.05rem;">Satellite-enabled disaster response optimization modeling</div>', unsafe_allow_html=True)
 
 # =========================================================
-# INPUT COMPONENT (UPDATED FOR PAYROLL BURDEN)
+# INPUT COMPONENT
 # =========================================================
 
 def vertical_inputs(prefix):
     c1, c2, c3, c4 = st.columns(4)
-
     with c1:
         teams = st.number_input("Field Teams", min_value=1, value=12, key=f"{prefix}_teams")
-        # Added: Breakdown of the payroll burden
         people_per_team = st.number_input("People Per Team", min_value=1, value=3, key=f"{prefix}_p_per_t")
         avg_wage = st.number_input("Avg Wage ($/hr)", min_value=10.0, value=75.0, key=f"{prefix}_wage")
-
     with c2:
         helicopters = st.number_input("Helicopters", min_value=0, value=2, key=f"{prefix}_heli")
         heli_rate = st.number_input("Heli Rate ($/hr)", min_value=1000.0, value=6500.0, key=f"{prefix}_heli_rate")
         heli_hours = st.number_input("Heli Hours (Per Heli)", min_value=0, value=30, key=f"{prefix}_heli_hours")
-
     with c3:
         trucks = st.number_input("Truck Rolls", min_value=0, value=150, key=f"{prefix}_trucks")
         truck_cost = st.number_input("Truck Roll Cost", min_value=50.0, value=650.0, key=f"{prefix}_truck_cost")
-
     with c4:
         gis_hours = st.number_input("GIS Hours", min_value=1, value=140, key=f"{prefix}_gis_hours")
         gis_rate = st.number_input("GIS Rate ($/hr)", min_value=50.0, value=185.0, key=f"{prefix}_gis_rate")
 
     return {
-        "teams": teams,
-        "people_per_team": people_per_team,
-        "avg_wage": avg_wage,
-        "helicopters": helicopters,
-        "heli_rate": heli_rate,
-        "heli_hours": heli_hours,
-        "trucks": trucks,
-        "truck_cost": truck_cost,
-        "gis_hours": gis_hours,
-        "gis_rate": gis_rate
+        "teams": teams, "people_per_team": people_per_team, "avg_wage": avg_wage,
+        "helicopters": helicopters, "heli_rate": heli_rate, "heli_hours": heli_hours,
+        "trucks": trucks, "truck_cost": truck_cost, "gis_hours": gis_hours, "gis_rate": gis_rate
     }
 
 # =========================================================
-# CALCULATIONS (UPDATED FOR PAYROLL BURDEN)
+# CALCULATIONS
 # =========================================================
 
 def calculate(data):
-    # Payroll Burden Math: (People * Wage) per team
     team_hourly_burden = data["people_per_team"] * data["avg_wage"]
-    
-    labor = (
-        data["teams"]
-        * 40 # Standard deployment hours
-        * team_hourly_burden
-    )
-
+    labor = (data["teams"] * 40 * team_hourly_burden)
     aviation = (data["helicopters"] * data["heli_hours"] * data["heli_rate"])
     logistics = (data["trucks"] * data["truck_cost"])
     gis = (data["gis_hours"] * data["gis_rate"])
-
     manual_total = labor + aviation + logistics + gis
 
     optimized_labor = labor * (1 - labor_reduction)
     optimized_aviation = aviation * (1 - aviation_reduction)
     optimized_logistics = logistics * (1 - logistics_reduction)
     optimized_gis = gis * (1 - gis_reduction)
-
     optimized_total = optimized_labor + optimized_aviation + optimized_logistics + optimized_gis
-    savings = manual_total - optimized_total
 
+    savings = manual_total - optimized_total
     roi = (((savings * annual_events) - subscription) / subscription) * 100 if subscription > 0 else 0
 
     return {
-        "manual_total": manual_total,
-        "optimized_total": optimized_total,
-        "savings": savings,
-        "roi": roi,
+        "manual_total": manual_total, "optimized_total": optimized_total, "savings": savings, "roi": roi,
         "manual_breakdown": {"Labor": labor, "Aviation": aviation, "Logistics": logistics, "GIS": gis},
         "optimized_breakdown": {"Labor": optimized_labor, "Aviation": optimized_aviation, "Logistics": optimized_logistics, "GIS": optimized_gis}
     }
 
 # =========================================================
-# TABS & EXECUTIVE SUMMARY (Same as your previous version)
+# TABS & VISUALS
 # =========================================================
 
 tabs = st.tabs(["EMERGENCY SERVICES"])
 results = []
-
 for idx, tab in enumerate(tabs):
     with tab:
         st.subheader("Operational Inputs")
@@ -169,6 +144,10 @@ for idx, tab in enumerate(tabs):
         fig.update_layout(height=420, barmode="group", paper_bgcolor=BG, plot_bgcolor=BG, font=dict(color=TEXT, size=13), margin=dict(l=10, r=10, t=30, b=10), legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
         st.plotly_chart(fig, use_container_width=True, key=f"chart_{idx}")
 
+# =========================================================
+# EXECUTIVE SUMMARY
+# =========================================================
+
 manual_annual = sum(r["manual_total"] for r in results) * annual_events
 optimized_annual = (sum(r["optimized_total"] for r in results) * annual_events) + subscription
 net_dividend = manual_annual - optimized_annual
@@ -186,3 +165,32 @@ st.markdown(f"""
     <div style="color: {MUTED}; font-size: 1rem;">Estimated annual operational savings including subscription costs and deployment optimization efficiencies.</div>
 </div>
 """, unsafe_allow_html=True)
+
+# =========================================================
+# NEW: METHODOLOGY BREAKDOWN (FORTUNE 500 BID STYLE)
+# =========================================================
+
+st.markdown("")
+with st.expander("🔍 FINANCIAL METHODOLOGY & AUDIT LOGIC"):
+    st.markdown(f"""
+    ### 1. Baseline Expenditure Model (Status Quo)
+    The manual cost baseline is established through a four-pillar resource aggregation model. This represents the "Gross Operational Burn" per catastrophic event prior to SAR-integrated intelligence.
+    
+    *   **Field Labor Liability:** Calculated as $L = (T \\times 40 \\times (P \\times W))$, where $T$ is the number of teams, $P$ is personnel per team, and $W$ is the hourly wage. 
+    *   **Aviation Asset Burn:** Calculated as $A = H \\times Hrs \\times R$, where $H$ is total helicopters, $Hrs$ is mission duration, and $R$ is wet-lease hourly rate.
+    *   **Logistics Overhead:** Calculated as $Log = TK \\times TC$, accounting for fuel, maintenance, and administrative cost per physical truck roll.
+    *   **Intelligence Latency:** Calculated as $I = G_h \\times G_r$, representing manual GIS processing time and analyst billables.
+    
+    ### 2. ICEYE Efficiency Framework (Optimized State)
+    The optimized state applies reduction coefficients to the baseline, derived from the accelerated "Time-to-Insight" provided by ICEYE SAR constellations.
+    
+    *   **Tactical Deployment Gain:** Satellite intelligence allows for the immediate "clearing" of non-impacted zones, reducing **Labor** and **Logistics** requirements by specifically targeting high-risk areas.
+    *   **Aviation Optimization:** High-frequency SAR imaging reduces the need for broad-area aerial reconnaissance, pivoting aviation assets from "Discovery" to "Tactical Rescue."
+    *   **Intelligence Automation:** ICEYE data-feeds automate flood extent mapping, reducing manual GIS analyst hours by up to 92%.
+    
+    ### 3. ROI & Net Dividend Calculation
+    The Net Annual Strategic Dividend is the final auditable value, calculated as:
+    $$Net Dividend = [(\\sum Manual Costs - \\sum Optimized Costs) \\times Annual Events] - Annual Subscription$$
+    
+    *This framework ensures that the projected savings are not merely theoretical, but represent a direct reduction in tangible operational expenditure.*
+    """)
