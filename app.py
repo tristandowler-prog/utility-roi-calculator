@@ -7,14 +7,15 @@ import datetime
 st.set_page_config(page_title="ICEYE | Utility ROI Calculator", layout="wide")
 
 def local_css():
+    # FIXED: Changed unsafe_content_as_html to unsafe_allow_html
     st.markdown("""
         <style>
         .main { background-color: #f8f9fa; }
         div[data-testid="stMetricValue"] { font-size: 1.8rem; color: #003366; }
         .stButton>button { width: 100%; border-radius: 5px; height: 3em; background-color: #003366; color: white; }
-        .report-box { padding: 20px; border-radius: 10px; background-color: #ffffff; border: 1px solid #e0e0e0; }
+        .report-box { padding: 20px; border-radius: 10px; background-color: #ffffff; border: 1px solid #e0e0e0; margin-top: 10px; }
         </style>
-    """, unsafe_content_as_html=True)
+    """, unsafe_allow_html=True)
 
 local_css()
 
@@ -42,11 +43,11 @@ def generate_pdf(data_dict):
     for key, value in data_dict.items():
         pdf.cell(0, 10, f"{key}: {value}", ln=True)
     
-    return pdf.output()
+    # FIXED: fpdf2 output returns bytes/bytearray by default
+    return bytes(pdf.output())
 
 # --- 3. SIDEBAR / GLOBAL INPUTS ---
 with st.sidebar:
-    st.image("https://www.iceye.com/hubfs/iceye-logo.svg", width=150) # Placeholder logo URL
     st.header("Global Parameters")
     events_pa = st.slider("Significant Weather Events / Year", 1, 20, 4)
     annual_sub = st.number_input("ICEYE Annual Subscription ($)", value=250000.0, step=10000.0)
@@ -83,14 +84,12 @@ with c3:
     iceye_processing_hrs = st.number_input("ICEYE SAR Prep (Hrs)", value=2.0)
 
 # --- 5. MATH ENGINE ---
-# Legacy Totals
 leg_air_event = (heli_rate * heli_hrs) + (heli_standby * cloud_wait_days) + \
                 (drone_rate * drone_hrs) + (drone_standby * cloud_wait_days)
 leg_gis_event = (gis_staff_count * gis_hourly_rate * leg_processing_hrs)
 leg_field_waste_event = (team_count * team_daily_burn * cloud_wait_days) + (dry_runs_per_event * dry_run_penalty)
 annual_legacy_total = (leg_air_event + leg_gis_event + leg_field_waste_event) * events_pa
 
-# ICEYE Totals
 iceye_gis_event = (gis_staff_count * gis_hourly_rate * iceye_processing_hrs)
 iceye_field_waste_event = (team_count * team_daily_burn * (sar_latency / 24.0))
 annual_iceye_total = ((iceye_gis_event + iceye_field_waste_event) * events_pa) + annual_sub
@@ -105,8 +104,10 @@ res_col1, res_col2 = st.columns([2, 1])
 with res_col1:
     st.subheader("Strategic Annual Impact")
     r1, r2, r3 = st.columns(3)
-    r1.metric("Net Operational Recovery", f"${net_annual_recovery:,.2f}", 
-              delta=f"{(net_annual_recovery/annual_legacy_total)*100:.1f}% Savings")
+    
+    # Simple logic for metric coloring
+    delta_val = f"{(net_annual_recovery/annual_legacy_total)*100:.1f}% Savings" if annual_legacy_total > 0 else "0%"
+    r1.metric("Net Operational Recovery", f"${net_annual_recovery:,.2f}", delta=delta_val)
     r2.metric("GIS Time Recovered", f"{gis_hours_saved:,.1f} Hours")
     r3.metric("Aviation Offset", f"${leg_air_event * events_pa:,.2f}")
 
@@ -120,33 +121,28 @@ with res_col1:
 
 with res_col2:
     st.subheader("Export Results")
-    with st.container():
-        st.markdown('<div class="report-box">', unsafe_content_as_html=True)
-        st.write("Click below to generate a PDF summary of these calculations for your business case.")
-        
-        pdf_content = {
-            "Annual Events": events_pa,
-            "Total Legacy Cost": f"${annual_legacy_total:,.2f}",
-            "Total ICEYE Cost": f"${annual_iceye_total:,.2f}",
-            "Net Annual Savings": f"${net_annual_recovery:,.2f}",
-            "GIS Productivity Gain": f"{gis_hours_saved} Hours"
-        }
-        
-        if st.button("Generate PDF Report"):
-            pdf_bytes = generate_pdf(pdf_content)
-            st.download_button(
-                label="Download PDF",
-                data=pdf_bytes,
-                file_name=f"ICEYE_ROI_Report_{datetime.date.today()}.pdf",
-                mime="application/pdf"
-            )
-        st.markdown('</div>', unsafe_content_as_html=True)
+    st.markdown('<div class="report-box">', unsafe_allow_html=True)
+    st.write("Generate a PDF summary of these calculations.")
+    
+    pdf_content = {
+        "Annual Events": events_pa,
+        "Total Legacy Cost": f"${annual_legacy_total:,.2f}",
+        "Total ICEYE Cost": f"${annual_iceye_total:,.2f}",
+        "Net Annual Savings": f"${net_annual_recovery:,.2f}",
+        "GIS Productivity Gain": f"{gis_hours_saved} Hours"
+    }
+    
+    # We generate the PDF data ahead of time for the button
+    pdf_bytes = generate_pdf(pdf_content)
+    
+    st.download_button(
+        label="Download PDF Report",
+        data=pdf_bytes,
+        file_name=f"ICEYE_ROI_Report_{datetime.date.today()}.pdf",
+        mime="application/pdf"
+    )
+    st.markdown('</div>', unsafe_allow_html=True)
 
 # --- 7. INSIGHTS ---
 st.divider()
-st.subheader("Operational Audit Findings")
-col_inf1, col_inf2 = st.columns(2)
-with col_inf1:
-    st.info(f"**Efficiency Gain:** Your GIS team currently spends {leg_processing_hrs * events_pa:,.0f} hours annually on manual digitizing. ICEYE automation reduces this by **{((leg_processing_hrs-iceye_processing_hrs)/leg_processing_hrs)*100:.0f}%**.")
-with col_inf2:
-    st.success(f"**Information Gap:** By reducing the 'Blind Window' from {cloud_wait_days} days to {sar_latency} hours, you eliminate **${(leg_field_waste_event - iceye_field_waste_event) * events_pa:,.2f}** in field labor downtime.")
+st.info(f"**Efficiency Gain:** Your GIS team currently spends {leg_processing_hrs * events_pa:,.0f} hours annually on manual digitizing. ICEYE automation reduces this by **{((leg_processing_hrs-iceye_processing_hrs)/max(1,leg_processing_hrs))*100:.0f}%**.")
