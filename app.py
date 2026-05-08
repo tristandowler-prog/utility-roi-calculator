@@ -8,26 +8,25 @@ import plotly.graph_objects as go
 st.set_page_config(
     page_title="ICEYE Strategic ROI",
     page_icon="▲",
-    layout="wide",
-    initial_sidebar_state="expanded"
+    layout="wide"
 )
 
 # =========================================================
-# DESIGN SYSTEM
+# THEME
 # =========================================================
 
-BG = "#060B14"
+BG = "#0B1220"
 CARD = "#111827"
-CARD_2 = "#0F172A"
+BORDER = "#1E293B"
+
+TEXT = "#F8FAFC"
+MUTED = "#94A3B8"
 
 PRIMARY = "#38BDF8"
 SUCCESS = "#22C55E"
-TEXT = "#F8FAFC"
-MUTED = "#94A3B8"
-BORDER = "rgba(255,255,255,0.06)"
 
 # =========================================================
-# GLOBAL CSS
+# LIGHTWEIGHT CSS
 # =========================================================
 
 st.markdown(
@@ -35,99 +34,49 @@ st.markdown(
 <style>
 
 html, body, .stApp {{
-    font-family: Inter, sans-serif;
-    background: linear-gradient(180deg, #020617 0%, #0B1120 100%);
+    background-color: {BG};
     color: {TEXT};
-}}
-
-section[data-testid="stSidebar"] {{
-    background: rgba(15,23,42,0.96);
-    border-right: 1px solid {BORDER};
+    font-family: Inter, sans-serif;
 }}
 
 .block-container {{
     padding-top: 2rem;
-    padding-bottom: 2rem;
-    max-width: 1500px;
+    padding-bottom: 3rem;
+    max-width: 1450px;
 }}
 
-.metric-card {{
-    background: rgba(15,23,42,0.75);
-    backdrop-filter: blur(12px);
-    border: 1px solid rgba(255,255,255,0.06);
-    border-radius: 24px;
-    padding: 28px;
-    box-shadow: 0 10px 40px rgba(0,0,0,0.35);
+h1, h2, h3 {{
+    color: {TEXT};
 }}
 
-.hero {{
-    padding: 42px;
-    border-radius: 30px;
-
-    background:
-        radial-gradient(circle at top left,
-        rgba(56,189,248,0.22),
-        transparent 30%),
-
-        linear-gradient(
-            135deg,
-            #0F172A 0%,
-            #020617 100%
-        );
-
-    border: 1px solid rgba(255,255,255,0.06);
-
-    margin-bottom: 28px;
+div[data-testid="stMetric"] {{
+    background-color: {CARD};
+    border: 1px solid {BORDER};
+    padding: 20px;
+    border-radius: 14px;
 }}
 
-.hero-title {{
-    font-size: 3.2rem;
-    font-weight: 800;
-    line-height: 1;
+div[data-testid="stMetricLabel"] {{
+    color: {MUTED};
+}}
+
+div[data-testid="stMetricValue"] {{
     color: white;
 }}
 
-.hero-sub {{
-    color: {MUTED};
-    font-size: 1.1rem;
-    margin-top: 14px;
-}}
-
-.label {{
-    color: {MUTED};
-    text-transform: uppercase;
-    font-size: 0.72rem;
-    letter-spacing: 1.5px;
-    margin-bottom: 10px;
-}}
-
-.big-number {{
-    font-size: 3rem;
-    font-weight: 800;
-    color: white;
-}}
-
-div[data-baseweb="input"] {{
-    background: rgba(255,255,255,0.03);
-    border-radius: 12px;
+section[data-testid="stSidebar"] {{
+    background-color: #0F172A;
+    border-right: 1px solid {BORDER};
 }}
 
 .stTabs [data-baseweb="tab"] {{
-    font-size: 1rem;
-    font-weight: 700;
-}}
-
-.stTabs [aria-selected="true"] {{
-    color: white;
-}}
-
-hr {{
-    border-color: rgba(255,255,255,0.08);
+    font-size: 0.95rem;
+    font-weight: 600;
 }}
 
 </style>
 """,
-    unsafe_allow_html=True,
+    unsafe_allow_html=True
 )
 
 # =========================================================
@@ -136,7 +85,7 @@ hr {{
 
 with st.sidebar:
 
-    st.markdown("## Strategic Inputs")
+    st.title("Strategic Inputs")
 
     currency = st.selectbox(
         "Reporting Currency",
@@ -160,18 +109,27 @@ with st.sidebar:
     subscription = st.number_input(
         "Annual Platform Cost",
         min_value=0.0,
-        max_value=10000000.0,
+        max_value=100000000.0,
         value=385000.0,
         step=10000.0
     )
 
-    st.markdown("---")
+    st.divider()
 
-    st.markdown("### Efficiency Assumptions")
+    st.subheader("Operational Assumptions")
 
     labor_reduction = (
         st.slider(
             "Labor Reduction %",
+            0,
+            100,
+            80
+        ) / 100
+    )
+
+    aviation_reduction = (
+        st.slider(
+            "Aviation Reduction %",
             0,
             100,
             80
@@ -187,15 +145,6 @@ with st.sidebar:
         ) / 100
     )
 
-    aviation_reduction = (
-        st.slider(
-            "Aviation Reduction %",
-            0,
-            100,
-            80
-        ) / 100
-    )
-
     gis_reduction = (
         st.slider(
             "GIS Automation %",
@@ -206,28 +155,26 @@ with st.sidebar:
     )
 
 # =========================================================
-# HERO SECTION
+# HEADER
 # =========================================================
+
+st.title("Strategic ROI & Operational Impact")
 
 st.markdown(
     f"""
-<div class="hero">
-
-    <div class="hero-title">
-        Strategic ROI & Operational Impact
-    </div>
-
-    <div class="hero-sub">
-        Satellite-enabled disaster response optimization modeling
-    </div>
-
+<div style="
+padding-bottom: 24px;
+color: {MUTED};
+font-size: 1.05rem;
+">
+Satellite-enabled disaster response optimization modeling
 </div>
 """,
-    unsafe_allow_html=True,
+    unsafe_allow_html=True
 )
 
 # =========================================================
-# INPUT COMPONENTS
+# INPUT COMPONENT
 # =========================================================
 
 def vertical_inputs(prefix):
@@ -322,14 +269,10 @@ def vertical_inputs(prefix):
     }
 
 # =========================================================
-# CALCULATION ENGINE
+# CALCULATIONS
 # =========================================================
 
 def calculate(data):
-
-    # -----------------------------
-    # MANUAL COSTS
-    # -----------------------------
 
     labor = (
         data["teams"]
@@ -360,10 +303,6 @@ def calculate(data):
         + gis
     )
 
-    # -----------------------------
-    # OPTIMIZED COSTS
-    # -----------------------------
-
     optimized_labor = (
         labor * (1 - labor_reduction)
     )
@@ -393,6 +332,7 @@ def calculate(data):
     )
 
     if subscription > 0:
+
         roi = (
             (
                 (savings * annual_events)
@@ -400,30 +340,27 @@ def calculate(data):
             )
             / subscription
         ) * 100
+
     else:
         roi = 0
-
-    breakdown_manual = {
-        "Labor": labor,
-        "Aviation": aviation,
-        "Logistics": logistics,
-        "GIS": gis
-    }
-
-    breakdown_optimized = {
-        "Labor": optimized_labor,
-        "Aviation": optimized_aviation,
-        "Logistics": optimized_logistics,
-        "GIS": optimized_gis
-    }
 
     return {
         "manual_total": manual_total,
         "optimized_total": optimized_total,
         "savings": savings,
         "roi": roi,
-        "manual_breakdown": breakdown_manual,
-        "optimized_breakdown": breakdown_optimized
+        "manual_breakdown": {
+            "Labor": labor,
+            "Aviation": aviation,
+            "Logistics": logistics,
+            "GIS": gis
+        },
+        "optimized_breakdown": {
+            "Labor": optimized_labor,
+            "Aviation": optimized_aviation,
+            "Logistics": optimized_logistics,
+            "GIS": optimized_gis
+        }
     }
 
 # =========================================================
@@ -442,7 +379,7 @@ for idx, tab in enumerate(tabs):
 
     with tab:
 
-        st.markdown("### Operational Inputs")
+        st.subheader("Operational Inputs")
 
         data = vertical_inputs(f"vertical_{idx}")
 
@@ -450,75 +387,41 @@ for idx, tab in enumerate(tabs):
 
         results.append(result)
 
+        st.markdown("")
+
         # =================================================
-        # KPI CARDS
+        # KPI ROW
         # =================================================
 
-        c1, c2, c3 = st.columns(3)
+        m1, m2, m3 = st.columns(3)
 
-        with c1:
+        with m1:
 
-            st.markdown(
-                f"""
-<div class="metric-card">
-
-    <div class="label">
-        Per Event Savings
-    </div>
-
-    <div class="big-number">
-        {currency_symbol}{result['savings']:,.0f}
-    </div>
-
-</div>
-""",
-                unsafe_allow_html=True
+            st.metric(
+                label="Per Event Savings",
+                value=f"{currency_symbol}{result['savings']:,.0f}"
             )
 
-        with c2:
+        with m2:
 
-            st.markdown(
-                f"""
-<div class="metric-card">
-
-    <div class="label">
-        Estimated ROI
-    </div>
-
-    <div class="big-number">
-        {result['roi']:.0f}%
-    </div>
-
-</div>
-""",
-                unsafe_allow_html=True
+            st.metric(
+                label="Estimated ROI",
+                value=f"{result['roi']:.0f}%"
             )
 
-        with c3:
+        with m3:
 
-            if result['savings'] > 0:
+            if result["savings"] > 0:
                 payback = (
                     subscription
-                    / result['savings']
+                    / result["savings"]
                 )
             else:
                 payback = 0
 
-            st.markdown(
-                f"""
-<div class="metric-card">
-
-    <div class="label">
-        Payback Period
-    </div>
-
-    <div class="big-number">
-        {payback:.1f} Events
-    </div>
-
-</div>
-""",
-                unsafe_allow_html=True
+            st.metric(
+                label="Payback Period",
+                value=f"{payback:.1f} Events"
             )
 
         st.markdown("")
@@ -533,30 +436,39 @@ for idx, tab in enumerate(tabs):
             go.Bar(
                 name="Manual",
                 x=list(result["manual_breakdown"].keys()),
-                y=list(result["manual_breakdown"].values())
+                y=list(result["manual_breakdown"].values()),
+                marker_color="#475569"
             )
         )
 
         fig.add_trace(
             go.Bar(
-                name="ICEYE Optimized",
+                name="Optimized",
                 x=list(result["optimized_breakdown"].keys()),
-                y=list(result["optimized_breakdown"].values())
+                y=list(result["optimized_breakdown"].values()),
+                marker_color=PRIMARY
             )
         )
 
         fig.update_layout(
             height=420,
             barmode="group",
-            paper_bgcolor="#0B1120",
-            plot_bgcolor="#0B1120",
-            font_color=TEXT,
-            margin=dict(
-                l=0,
-                r=0,
-                t=30,
-                b=0
+
+            paper_bgcolor=BG,
+            plot_bgcolor=BG,
+
+            font=dict(
+                color=TEXT,
+                size=13
             ),
+
+            margin=dict(
+                l=10,
+                r=10,
+                t=30,
+                b=10
+            ),
+
             legend=dict(
                 orientation="h",
                 yanchor="bottom",
@@ -568,13 +480,12 @@ for idx, tab in enumerate(tabs):
 
         fig.update_xaxes(
             showgrid=False,
-            color="#CBD5E1"
+            color=MUTED
         )
 
         fig.update_yaxes(
-            showgrid=True,
             gridcolor="rgba(255,255,255,0.06)",
-            color="#CBD5E1"
+            color=MUTED
         )
 
         st.plotly_chart(
@@ -605,25 +516,69 @@ net_dividend = (
     - optimized_annual
 )
 
-st.markdown("<br>", unsafe_allow_html=True)
+st.divider()
+
+summary_1, summary_2, summary_3 = st.columns(3)
+
+with summary_1:
+
+    st.metric(
+        "Annual Manual Cost",
+        f"{currency_symbol}{manual_annual:,.0f}"
+    )
+
+with summary_2:
+
+    st.metric(
+        "Annual Optimized Cost",
+        f"{currency_symbol}{optimized_annual:,.0f}"
+    )
+
+with summary_3:
+
+    st.metric(
+        "Net Annual Savings",
+        f"{currency_symbol}{net_dividend:,.0f}"
+    )
+
+st.markdown("")
 
 st.markdown(
     f"""
-<div class="hero">
+<div style="
+padding: 28px;
+background-color: {CARD};
+border: 1px solid {BORDER};
+border-radius: 16px;
+">
 
-    <div class="label">
-        Net Annual Operational Dividend
-    </div>
+<div style="
+font-size: 0.85rem;
+letter-spacing: 1px;
+text-transform: uppercase;
+color: {MUTED};
+margin-bottom: 12px;
+">
+Executive Summary
+</div>
 
-    <div class="hero-title">
-        {currency_symbol}{net_dividend:,.0f}
-    </div>
+<div style="
+font-size: 2.2rem;
+font-weight: 700;
+color: white;
+margin-bottom: 10px;
+">
+{currency_symbol}{net_dividend:,.0f}
+</div>
 
-    <div class="hero-sub">
-        Including subscription licensing and operational optimization
-    </div>
+<div style="
+color: {MUTED};
+font-size: 1rem;
+">
+Estimated annual operational savings including subscription costs and deployment optimization efficiencies.
+</div>
 
 </div>
 """,
-    unsafe_allow_html=True,
+    unsafe_allow_html=True
 )
