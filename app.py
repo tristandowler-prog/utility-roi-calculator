@@ -211,12 +211,21 @@ def vertical_inputs(prefix):
         )
 
         heli_rate = st.number_input(
-            "Helicopter Rate ($/hr)",
+            "Heli Rate ($/hr)",
             min_value=1000.0,
             max_value=50000.0,
             value=6500.0,
             step=500.0,
             key=f"{prefix}_heli_rate"
+        )
+        
+        # ADDED: HELICOPTER HOURS INPUT
+        heli_hours = st.number_input(
+            "Heli Hours (Per Heli)",
+            min_value=0,
+            max_value=1000,
+            value=30,
+            key=f"{prefix}_heli_hours"
         )
 
     with c3:
@@ -262,6 +271,7 @@ def vertical_inputs(prefix):
         "team_rate": team_rate,
         "helicopters": helicopters,
         "heli_rate": heli_rate,
+        "heli_hours": heli_hours, # Pass new variable to calculation
         "trucks": trucks,
         "truck_cost": truck_cost,
         "gis_hours": gis_hours,
@@ -280,9 +290,10 @@ def calculate(data):
         * data["team_rate"]
     )
 
+    # UPDATED: USES DYNAMIC HELI HOURS
     aviation = (
         data["helicopters"]
-        * 30
+        * data["heli_hours"]
         * data["heli_rate"]
     )
 
@@ -364,13 +375,11 @@ def calculate(data):
     }
 
 # =========================================================
-# TABS
+# TABS (UPDATED: EMERGENCY SERVICES ONLY)
 # =========================================================
 
 tabs = st.tabs([
-    "LOCAL COUNCIL",
-    "EMERGENCY SERVICES",
-    "UTILITIES"
+    "EMERGENCY SERVICES"
 ])
 
 results = []
