@@ -1,185 +1,147 @@
 import streamlit as st
+import pandas as pd
+import plotly.graph_objects as go
 import base64
 from fpdf import FPDF
 
-# --- 1. ENTERPRISE DESIGN SYSTEM (Clean, Professional, ROI-Focused) ---
-st.set_page_config(page_title="ICEYE ROI Calculator", layout="wide")
+# --- 1. SETTINGS & THEME ---
+st.set_page_config(page_title="ICEYE ROI Dashboard", layout="wide")
 
-st.markdown("""
+# Professional Color Palette
+NAVY = "#1E3A8A"
+SLATE = "#64748B"
+SUCCESS = "#10B981"
+DANGER = "#EF4444"
+BG_LIGHT = "#F8FAFC"
+
+st.markdown(f"""
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
-    
-    .stApp {
-        background-color: #F8FAFC;
-        color: #1E293B;
-        font-family: 'Roboto', sans-serif;
-    }
-    
-    /* ROI Card Styling */
-    .roi-section {
-        background: #FFFFFF;
-        border: 1px solid #E2E8F0;
-        border-radius: 8px;
-        padding: 25px;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-        margin-bottom: 20px;
-    }
-    
-    .header-box {
-        background: #1E3A8A;
-        padding: 20px;
-        border-radius: 8px;
-        color: white;
-        margin-bottom: 30px;
-    }
-    
-    .comparison-header {
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-        font-size: 0.9rem;
-        padding-bottom: 10px;
-        border-bottom: 2px solid #E2E8F0;
-        margin-bottom: 15px;
-    }
-
-    .manual-red { color: #B91C1C; font-weight: 700; }
-    .iceye-blue { color: #1E3A8A; font-weight: 700; }
-    
-    /* Input field optimization */
-    .stNumberInput label { font-weight: 600 !important; color: #475569 !important; }
+    .stApp {{ background-color: {BG_LIGHT}; color: #1E293B; }}
+    .main-header {{ background: white; padding: 20px; border-bottom: 2px solid #E2E8F0; margin-bottom: 20px; }}
+    .card {{ background: white; border: 1px solid #E2E8F0; border-radius: 12px; padding: 25px; margin-bottom: 20px; }}
+    .stat-label {{ color: {SLATE}; font-size: 0.85rem; font-weight: 700; text-transform: uppercase; }}
+    .stat-value {{ font-size: 2rem; font-weight: 800; color: {NAVY}; }}
+    .stTabs [data-baseweb="tab"] {{ font-weight: 700; color: {SLATE}; }}
+    .stTabs [aria-selected="true"] {{ color: {NAVY} !important; border-bottom-color: {NAVY} !important; }}
     </style>
 """, unsafe_allow_html=True)
 
-# --- 2. EXECUTIVE CONTROLS & CURRENCY ---
+# --- 2. TOP NAVIGATION / GLOBAL INPUTS ---
 with st.container():
-    st.markdown("""<div class='header-box'>
-        <h1 style='margin:0;'>ICEYE | Strategic ROI Dashboard</h1>
-        <p style='margin:0; opacity:0.8;'>Operational Impact Analysis & Resource Optimization</p>
-    </div>""", unsafe_allow_html=True)
-
-with st.sidebar:
-    st.image("https://www.iceye.com/hubfs/iceye-logo.svg", width=140)
-    st.markdown("### 🗺️ GLOBAL PARAMETERS")
-    currency = st.selectbox("Currency Selection", ["AUD", "NZD", "USD", "EUR"])
-    annual_events = st.number_input("Major Events / Year", value=2)
-    iceye_sub = st.number_input("Annual ICEYE Service Fee", value=385000)
-    st.divider()
-    st.info("Input actual agency/utility costs below to generate a transparent comparison.")
-
-symbol = {"AUD": "$", "NZD": "$", "USD": "$", "EUR": "€"}[currency]
-
-# --- 3. VERTICAL CALCULATIONS ---
-t1, t2, t3 = st.tabs(["🏛️ LOCAL COUNCIL", "🚨 EMERGENCY SERVICES", "⚡ UTILITIES"])
-
-def render_inputs(key_prefix):
-    col_a, col_b = st.columns(2)
-    with col_a:
-        teams = st.number_input("Number of Field Teams", value=10, key=f"{key_prefix}_teams")
-        team_rate = st.number_input("Field Team Rate (per hr)", value=225, key=f"{key_prefix}_t_rate")
-        trucks = st.number_input("Truck Rolls (per event)", value=120, key=f"{key_prefix}_trucks")
-        truck_cost = st.number_input("Cost per Truck Roll", value=650, key=f"{key_prefix}_tr_cost")
-    with col_b:
-        helis = st.number_input("Number of Helicopters", value=2, key=f"{key_prefix}_helis")
-        heli_rate = st.number_input("Heli Rate (per hr)", value=6500, key=f"{key_prefix}_h_rate")
-        planes = st.number_input("Number of Airplanes", value=1, key=f"{key_prefix}_planes")
-        plane_rate = st.number_input("Plane Rate (per hr)", value=2800, key=f"{key_prefix}_p_rate")
-    
-    st.markdown("---")
-    c1, c2 = st.columns(2)
+    st.markdown("<div class='main-header'>", unsafe_allow_html=True)
+    c1, c2, c3, c4 = st.columns([2, 1, 1, 1])
     with c1:
-        gis_hours = st.number_input("Manual GIS Digitizing (Total Man-Hours)", value=140, key=f"{key_prefix}_gis_h")
-        gis_rate = st.number_input("GIS Analyst Rate (per hr)", value=185, key=f"{key_prefix}_gis_r")
+        st.image("https://www.iceye.com/hubfs/iceye-logo.svg", width=120)
+        st.subheader("Strategic ROI Dashboard")
     with c2:
-        latency = st.number_input("Data-to-Insight Latency (Total Hours)", value=72, key=f"{key_prefix}_latency", help="Time burden to produce actionable intel.")
-    
-    return {
-        "teams": teams, "team_rate": team_rate, "trucks": trucks, "truck_cost": truck_cost,
-        "helis": helis, "h_rate": heli_rate, "planes": planes, "p_rate": plane_rate,
-        "gis_h": gis_hours, "gis_r": gis_rate, "latency": latency
-    }
+        currency = st.selectbox("Currency", ["AUD", "NZD", "USD", "EUR"])
+        sym = {"AUD": "$", "NZD": "$", "USD": "$", "EUR": "€"}[currency]
+    with c3:
+        annual_events = st.number_input("Events / Year", value=2)
+    with c4:
+        iceye_sub = st.number_input("ICEYE Subscription", value=385000)
+    st.markdown("</div>", unsafe_allow_html=True)
 
-# --- TAB 1: COUNCIL ---
+# --- 3. DYNAMIC INPUT HANDLER ---
+def get_vertical_inputs(key):
+    st.markdown("#### ⚙️ Resource Configuration")
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        teams = st.number_input(f"Field Teams", value=12, key=f"{key}_t")
+        t_rate = st.number_input(f"Team Hourly Rate", value=225, key=f"{key}_tr")
+        trucks = st.number_input(f"Total Truck Rolls", value=150, key=f"{key}_tk")
+        tr_cost = st.number_input(f"Cost Per Truck Roll", value=650, key=f"{key}_tc")
+    with col2:
+        helis = st.number_input(f"Helicopters Deployed", value=2, key=f"{key}_h")
+        h_rate = st.number_input(f"Heli Rate / Hr", value=6500, key=f"{key}_hr")
+        planes = st.number_input(f"Planes Deployed", value=1, key=f"{key}_p")
+        p_rate = st.number_input(f"Plane Rate / Hr", value=2800, key=f"{key}_pr")
+    with col3:
+        gis_h = st.number_input(f"Manual GIS Hours", value=140, key=f"{key}_gh")
+        gis_r = st.number_input(f"GIS Analyst Rate", value=185, key=f"{key}_gr")
+        latency = st.number_input(f"Manual Latency (Hrs)", value=72, key=f"{key}_lt")
+    return locals()
+
+# --- 4. TABS & LOGIC ---
+t1, t2, t3 = st.tabs(["🏛️ COUNCIL", "🚨 EMERGENCY SERVICES", "⚡ UTILITIES"])
+
+def calculate_and_plot(data, title):
+    # Manual Logic
+    m_labor = (data['teams'] * 40 * data['t_rate'])
+    m_aviation = (data['helis'] * 30 * data['h_rate']) + (data['planes'] * 30 * data['p_rate'])
+    m_logistics = (data['trucks'] * data['tr_cost'])
+    m_intel = (data['gis_h'] * data['gis_r'])
+    total_manual = m_labor + m_aviation + m_logistics + m_intel
+
+    # ICEYE Logic (Efficiency Gains)
+    i_labor = m_labor * 0.20 # 80% reduction via focused deployment
+    i_aviation = (data['helis'] * 5 * data['h_rate']) # Tactical only
+    i_logistics = m_logistics * 0.15 # 85% reduction in dry truck rolls
+    i_intel = (8 * data['gis_r']) # Fast ingestion
+    total_iceye = i_labor + i_aviation + i_logistics + i_intel
+
+    # Viz
+    fig = go.Figure(data=[
+        go.Bar(name='Manual Process', x=['Labor', 'Aviation', 'Truck Rolls', 'GIS/Intel'], 
+               y=[m_labor, m_aviation, m_logistics, m_intel], marker_color=SLATE),
+        go.Bar(name='ICEYE Process', x=['Labor', 'Aviation', 'Truck Rolls', 'GIS/Intel'], 
+               y=[i_labor, i_aviation, i_logistics, i_intel], marker_color=NAVY)
+    ])
+    fig.update_layout(barmode='group', height=350, margin=dict(t=20, b=20, l=0, r=0), 
+                      paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
+    
+    col_l, col_r = st.columns([1, 2])
+    with col_l:
+        st.markdown(f"""<div class='card'>
+            <p class='stat-label'>Event Savings</p>
+            <p class='stat-value' style='color:{SUCCESS}'>{sym}{total_manual - total_iceye:,.0f}</p>
+            <p class='stat-label'>Time to Insight</p>
+            <p class='stat-value'>6h <span style='font-size:1rem; color:{SLATE};'>vs {data['latency']}h</span></p>
+        </div>""", unsafe_allow_html=True)
+    with col_r:
+        st.plotly_chart(fig, use_container_width=True)
+    
+    return total_manual, total_iceye
+
 with t1:
-    st.markdown("<div class='roi-section'>", unsafe_allow_html=True)
-    st.subheader("Council Damage Assessment & RDA")
-    data = render_inputs("council")
-    
-    # Manual Logic: 40 hours per team + Trucks + Aviation + GIS
-    manual_council = (data['teams'] * 40 * data['team_rate']) + (data['trucks'] * data['truck_cost']) + \
-                     (data['helis'] * 20 * data['h_rate']) + (data['gis_h'] * data['gis_r'])
-    
-    # ICEYE Logic: 80% Reduction in field/truck, 0 Aviation (Search), 4hr GIS
-    iceye_council = (data['teams'] * 8 * data['team_rate']) + (data['trucks'] * 0.2 * data['truck_cost']) + \
-                    (4 * data['gis_r'])
-    
-    c1, c2 = st.columns(2)
-    c1.metric("Current Operational Burn", f"{symbol}{manual_council:,.0f}", delta="Manual Process", delta_color="inverse")
-    c2.metric("ICEYE Augmented Cost", f"{symbol}{iceye_council:,.0f}", delta=f"{data['latency'] - 6}h Faster Insight")
-    st.markdown("</div>", unsafe_allow_html=True)
+    d1 = get_vertical_inputs("c")
+    m1, i1 = calculate_and_plot(d1, "Council")
 
-# --- TAB 2: EMERGENCY SERVICES ---
 with t2:
-    st.markdown("<div class='roi-section'>", unsafe_allow_html=True)
-    st.subheader("Emergency Services: Search & Rescue Recon")
-    data_es = render_inputs("es")
-    
-    manual_es = (data_es['helis'] * data_es['latency'] * data_es['h_rate']) + \
-                (data_es['planes'] * data_es['latency'] * data_es['p_rate']) + (data_es['gis_h'] * data_es['gis_r'])
-    
-    # ICEYE Logic: No search flights, 5h tactical rescue flights only
-    iceye_es = (data_es['helis'] * 5 * data_es['h_rate']) + (8 * data_es['gis_r'])
-    
-    c1, c2 = st.columns(2)
-    c1.metric("Blind Search Expense", f"{symbol}{manual_es:,.0f}", delta="Risk Exposure High", delta_color="inverse")
-    c2.metric("Informed Ops Cost", f"{symbol}{iceye_es:,.0f}", delta="SAR Clearance Provided")
-    st.markdown("</div>", unsafe_allow_html=True)
+    d2 = get_vertical_inputs("e")
+    m2, i2 = calculate_and_plot(d2, "Emergency")
 
-# --- TAB 3: UTILITIES ---
 with t3:
-    st.markdown("<div class='roi-section'>", unsafe_allow_html=True)
-    st.subheader("Utility Infrastructure Grid Clearance")
-    data_u = render_inputs("util")
-    
-    # Manual: Full patrol of all assets
-    manual_u = (data_u['teams'] * 60 * data_u['team_rate']) + (data_u['trucks'] * data_u['truck_cost'])
-    
-    # ICEYE: 85% Remote Clearance via SAR
-    iceye_u = (manual_u * 0.15) + (8 * data_u['gis_r'])
-    
-    c1, c2 = st.columns(2)
-    c1.metric("Grid Inspection Burn", f"{symbol}{manual_u:,.0f}", delta="Slow Recovery", delta_color="inverse")
-    c2.metric("SAR-Led Recovery", f"{symbol}{iceye_u:,.0f}", delta="85% Efficiency Gain")
-    st.markdown("</div>", unsafe_allow_html=True)
+    d3 = get_vertical_inputs("u")
+    m3, i3 = calculate_and_plot(d3, "Utility")
 
-# --- 4. THE BOOMER ROI SUMMARY ---
+# --- 5. FINAL FINANCIAL SUMMARY ---
 st.divider()
-total_man = (manual_council + manual_es + manual_u) * annual_events
-total_ice = ((iceye_council + iceye_es + iceye_u) * annual_events) + iceye_sub
-savings = total_man - total_ice
+ann_manual = (m1 + m2 + m3) * annual_events
+ann_iceye = ((i1 + i2 + i3) * annual_events) + iceye_sub
+total_dividend = ann_manual - ann_iceye
 
 st.markdown(f"""
-    <div style='background: #FFFFFF; border: 4px solid #1E3A8A; padding: 40px; border-radius: 8px; text-align: center;'>
-        <h2 style='color: #1E3A8A; margin:0;'>TOTAL ANNUAL STRATEGIC DIVIDEND</h2>
-        <h1 style='font-size: 5rem; color: #1E3A8A; margin: 10px 0;'>{symbol}{savings:,.0f}</h1>
-        <p style='font-weight: bold; color: #475569;'>Net Savings based on {annual_events} events and ${iceye_sub:,.0f} Annual Investment</p>
+    <div style='background:{NAVY}; padding: 40px; border-radius: 12px; text-align: center; color: white;'>
+        <h2 style='margin:0; opacity:0.8; font-size: 1rem; letter-spacing: 2px;'>TOTAL ANNUAL STRATEGIC DIVIDEND</h2>
+        <h1 style='font-size: 5rem; margin: 10px 0;'>{sym}{total_dividend:,.0f}</h1>
+        <p style='margin:0;'>Net Savings across {annual_events} events including subscription cost.</p>
     </div>
 """, unsafe_allow_html=True)
 
-# --- 5. PDF EXPORT ---
-if st.button("Generate Executive ROI Report (PDF)"):
+# --- 6. PDF EXPORT ---
+if st.button("📥 DOWNLOAD EXECUTIVE BRIEFING"):
     pdf = FPDF()
     pdf.add_page()
     pdf.set_font("Arial", 'B', 16)
-    pdf.cell(200, 10, f"ICEYE STRATEGIC ROI ANALYSIS ({currency})", ln=True, align='C')
-    pdf.set_font("Arial", '', 12)
+    pdf.cell(200, 10, f"ICEYE STRATEGIC ROI REPORT ({currency})", ln=True, align='C')
     pdf.ln(10)
-    pdf.cell(200, 10, f"Current Manual Process Burn: {symbol}{total_man:,.0f}", ln=True)
-    pdf.cell(200, 10, f"ICEYE-Augmented Process Cost: {symbol}{total_ice:,.0f}", ln=True)
-    pdf.ln(5)
+    pdf.set_font("Arial", '', 12)
+    pdf.cell(200, 10, f"Annual Manual Operational Burn: {sym}{ann_manual:,.0f}", ln=True)
+    pdf.cell(200, 10, f"Annual ICEYE Integrated Cost: {sym}{ann_iceye:,.0f}", ln=True)
     pdf.set_font("Arial", 'B', 14)
-    pdf.cell(200, 10, f"NET ANNUAL SAVINGS: {symbol}{savings:,.0f}", ln=True)
+    pdf.cell(200, 15, f"NET BUDGET DIVIDEND: {sym}{total_dividend:,.0f}", ln=True)
     
-    pdf_bytes = pdf.output(dest='S').encode('latin-1')
-    b64 = base64.b64encode(pdf_bytes).decode()
-    st.markdown(f'<a href="data:application/pdf;base64,{b64}" download="ICEYE_ROI_Analysis.pdf">Click here to download PDF</a>', unsafe_allow_html=True)
+    pdf_output = pdf.output(dest='S').encode('latin-1')
+    b64 = base64.b64encode(pdf_output).decode()
+    st.markdown(f'<a href="data:application/pdf;base64,{b64}" download="ICEYE_ROI_Summary.pdf">Click here to save PDF</a>', unsafe_allow_html=True)
