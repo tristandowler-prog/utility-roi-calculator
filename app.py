@@ -1,128 +1,430 @@
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
-import base64
-from fpdf import FPDF
+import plotly.express as px
 
-# --- 1. SETTINGS & THEME ---
-st.set_page_config(page_title="ICEYE ROI Dashboard", layout="wide")
+# ---------------------------------------------------
+# CONFIG
+# ---------------------------------------------------
 
-NAVY = "#1E3A8A"
-SLATE = "#64748B"
-SUCCESS = "#10B981"
-BG_LIGHT = "#F8FAFC"
+st.set_page_config(
+    page_title="ICEYE Strategic ROI",
+    page_icon="▲",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+# ---------------------------------------------------
+# DESIGN SYSTEM
+# ---------------------------------------------------
+
+BG = "#060B14"
+CARD = "#111827"
+CARD_2 = "#0F172A"
+
+PRIMARY = "#38BDF8"
+SUCCESS = "#22C55E"
+TEXT = "#F8FAFC"
+MUTED = "#94A3B8"
+BORDER = "rgba(255,255,255,0.06)"
 
 st.markdown(f"""
-    <style>
-    .stApp {{ background-color: {BG_LIGHT}; color: #1E293B; }}
-    .main-header {{ background: white; padding: 20px; border-bottom: 2px solid #E2E8F0; margin-bottom: 20px; }}
-    .card {{ background: white; border: 1px solid #E2E8F0; border-radius: 12px; padding: 25px; margin-bottom: 20px; }}
-    .stat-label {{ color: {SLATE}; font-size: 0.85rem; font-weight: 700; text-transform: uppercase; }}
-    .stat-value {{ font-size: 2rem; font-weight: 800; color: {NAVY}; }}
-    </style>
+<style>
+
+html, body, [class*="css"] {{
+    font-family: Inter, sans-serif;
+}}
+
+.stApp {{
+    background: linear-gradient(180deg, #020617 0%, #0B1120 100%);
+    color: {TEXT};
+}}
+
+section[data-testid="stSidebar"] {{
+    background: rgba(15,23,42,0.95);
+    border-right: 1px solid {BORDER};
+}}
+
+.block-container {{
+    padding-top: 2rem;
+    padding-bottom: 2rem;
+}}
+
+.metric-card {{
+    background: rgba(15,23,42,0.75);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 20px;
+    padding: 28px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.35);
+}}
+
+.hero {{
+    padding: 40px;
+    border-radius: 28px;
+    background:
+        radial-gradient(circle at top left, rgba(56,189,248,0.25), transparent 30%),
+        linear-gradient(135deg, #0F172A 0%, #020617 100%);
+    border: 1px solid rgba(255,255,255,0.06);
+    margin-bottom: 28px;
+}}
+
+.hero-title {{
+    font-size: 3rem;
+    font-weight: 800;
+    line-height: 1;
+}}
+
+.hero-sub {{
+    color: {MUTED};
+    font-size: 1.1rem;
+    margin-top: 12px;
+}}
+
+.label {{
+    color: {MUTED};
+    text-transform: uppercase;
+    font-size: 0.72rem;
+    letter-spacing: 1px;
+}}
+
+.big-number {{
+    font-size: 3rem;
+    font-weight: 800;
+}}
+
+div[data-baseweb="input"] {{
+    background: rgba(255,255,255,0.03);
+}}
+
+.stTabs [data-baseweb="tab"] {{
+    font-size: 1rem;
+    font-weight: 600;
+}}
+
+</style>
 """, unsafe_allow_html=True)
 
-# --- 2. GLOBAL INPUTS ---
-with st.container():
-    st.markdown("<div class='main-header'>", unsafe_allow_html=True)
-    c1, c2, c3, c4 = st.columns([2, 1, 1, 1])
-    with c1:
-        st.image("https://www.iceye.com/hubfs/iceye-logo.svg", width=120)
-        st.subheader("Boomer ROI Dashboard")
-    with c2:
-        currency = st.selectbox("Currency", ["AUD", "NZD", "USD", "EUR"])
-        sym = {"AUD": "$", "NZD": "$", "USD": "$", "EUR": "€"}[currency]
-    with c3:
-        annual_events = st.number_input("Events / Year", value=2)
-    with c4:
-        iceye_sub = st.number_input("ICEYE Subscription", value=385000)
-    st.markdown("</div>", unsafe_allow_html=True)
+# ---------------------------------------------------
+# SIDEBAR
+# ---------------------------------------------------
 
-# --- 3. INPUT HANDLER ---
-def get_vertical_inputs(key):
-    st.markdown("#### ⚙️ Resource Configuration")
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        teams = st.number_input(f"Field Teams", value=12, key=f"{key}_teams_in")
-        t_rate = st.number_input(f"Team Hourly Rate", value=225, key=f"{key}_rate_in")
-        trucks = st.number_input(f"Total Truck Rolls", value=150, key=f"{key}_trucks_in")
-        tr_cost = st.number_input(f"Cost Per Truck Roll", value=650, key=f"{key}_tcost_in")
-    with col2:
-        helis = st.number_input(f"Helicopters", value=2, key=f"{key}_helis_in")
-        h_rate = st.number_input(f"Heli Rate / Hr", value=6500, key=f"{key}_hrate_in")
-        planes = st.number_input(f"Planes", value=1, key=f"{key}_planes_in")
-        p_rate = st.number_input(f"Plane Rate / Hr", value=2800, key=f"{key}_prate_in")
-    with col3:
-        gis_h = st.number_input(f"Manual GIS Hours", value=140, key=f"{key}_gish_in")
-        gis_r = st.number_input(f"GIS Analyst Rate", value=185, key=f"{key}_gisr_in")
-        latency = st.number_input(f"Manual Latency (Hrs)", value=72, key=f"{key}_lat_in")
-    return locals()
+with st.sidebar:
 
-# --- 4. CALCULATION & PLOTTING (FIXED) ---
-def calculate_and_plot(data, key_suffix):
-    # Manual Logic
-    m_labor = (data['teams'] * 40 * data['t_rate'])
-    m_aviation = (data['helis'] * 30 * data['h_rate']) + (data['planes'] * 30 * data['p_rate'])
-    m_logistics = (data['trucks'] * data['tr_cost'])
-    m_intel = (data['gis_h'] * data['gis_r'])
-    total_manual = m_labor + m_aviation + m_logistics + m_intel
+    st.markdown("## Strategic Inputs")
 
-    # ICEYE Logic
-    i_labor = m_labor * 0.20 
-    i_aviation = (data['helis'] * 5 * data['h_rate']) 
-    i_logistics = m_logistics * 0.15 
-    i_intel = (8 * data['gis_r']) 
-    total_iceye = i_labor + i_aviation + i_logistics + i_intel
+    currency = st.selectbox(
+        "Currency",
+        ["USD", "AUD", "EUR", "NZD"]
+    )
 
-    # VIZ
-    fig = go.Figure(data=[
-        go.Bar(name='Manual Process', x=['Labor', 'Aviation', 'Trucks', 'GIS'], 
-               y=[m_labor, m_aviation, m_logistics, m_intel], marker_color=SLATE),
-        go.Bar(name='ICEYE Process', x=['Labor', 'Aviation', 'Trucks', 'GIS'], 
-               y=[i_labor, i_aviation, i_logistics, i_intel], marker_color=NAVY)
-    ])
-    fig.update_layout(barmode='group', height=350, margin=dict(t=20, b=20, l=0, r=0), 
-                      legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
-    
-    col_l, col_r = st.columns([1, 2])
-    with col_l:
-        st.markdown(f"""<div class='card'>
-            <p class='stat-label'>Event Savings</p>
-            <p class='stat-value' style='color:{SUCCESS}'>{sym}{total_manual - total_iceye:,.0f}</p>
-            <p class='stat-label'>Insights Latency</p>
-            <p class='stat-value'>6h <span style='font-size:1rem; color:{SLATE};'>vs {data['latency']}h</span></p>
-        </div>""", unsafe_allow_html=True)
-    with col_r:
-        # ADDING UNIQUE KEY HERE PREVENTS DUPLICATE ID ERROR
-        st.plotly_chart(fig, use_container_width=True, key=f"chart_{key_suffix}")
-    
-    return total_manual, total_iceye
+    annual_events = st.slider(
+        "Annual Events",
+        1,
+        20,
+        4
+    )
 
-# --- 5. TABS ---
-t1, t2, t3 = st.tabs(["🏛️ COUNCIL", "🚨 EMERGENCY SERVICES", "⚡ UTILITIES"])
+    subscription = st.number_input(
+        "Annual Platform Cost",
+        value=385000,
+        step=10000
+    )
 
-with t1:
-    d1 = get_vertical_inputs("council")
-    m1, i1 = calculate_and_plot(d1, "council")
+    st.markdown("---")
 
-with t2:
-    d2 = get_vertical_inputs("es")
-    m2, i2 = calculate_and_plot(d2, "es")
+    st.markdown("### Operational Efficiency")
 
-with t3:
-    d3 = get_vertical_inputs("util")
-    m3, i3 = calculate_and_plot(d3, "util")
+    labor_reduction = st.slider(
+        "Labor Reduction %",
+        0,
+        100,
+        80
+    ) / 100
 
-# --- 6. FINAL ROI ---
-st.divider()
-ann_manual = (m1 + m2 + m3) * annual_events
-ann_iceye = ((i1 + i2 + i3) * annual_events) + iceye_sub
-total_dividend = ann_manual - ann_iceye
+    logistics_reduction = st.slider(
+        "Truck Roll Reduction %",
+        0,
+        100,
+        85
+    ) / 100
+
+# ---------------------------------------------------
+# HEADER
+# ---------------------------------------------------
 
 st.markdown(f"""
-    <div style='background:{NAVY}; padding: 40px; border-radius: 12px; text-align: center; color: white;'>
-        <p style='margin:0; opacity:0.8; font-size: 1rem; letter-spacing: 2px; font-weight:bold;'>NET ANNUAL STRATEGIC DIVIDEND</p>
-        <h1 style='font-size: 5rem; margin: 10px 0;'>{sym}{total_dividend:,.0f}</h1>
-        <p style='margin:0;'>Consolidated across {annual_events} events per annum.</p>
+<div class="hero">
+    <div class="hero-title">
+        Strategic ROI & Operational Impact
     </div>
+
+    <div class="hero-sub">
+        Satellite-enabled disaster response optimization modeling
+    </div>
+</div>
+""", unsafe_allow_html=True)
+
+# ---------------------------------------------------
+# INPUTS
+# ---------------------------------------------------
+
+def vertical_inputs(prefix):
+
+    c1, c2, c3, c4 = st.columns(4)
+
+    with c1:
+        teams = st.number_input(
+            "Field Teams",
+            1,
+            100,
+            12,
+            key=f"{prefix}_teams"
+        )
+
+        team_rate = st.number_input(
+            "Team Rate",
+            50,
+            10000,
+            225,
+            key=f"{prefix}_teamrate"
+        )
+
+    with c2:
+
+        helicopters = st.number_input(
+            "Helicopters",
+            0,
+            20,
+            2,
+            key=f"{prefix}_heli"
+        )
+
+        heli_rate = st.number_input(
+            "Heli Hourly Rate",
+            1000,
+            20000,
+            6500,
+            key=f"{prefix}_helirate"
+        )
+
+    with c3:
+
+        trucks = st.number_input(
+            "Truck Rolls",
+            0,
+            5000,
+            150,
+            key=f"{prefix}_truck"
+        )
+
+        truck_cost = st.number_input(
+            "Cost Per Truck Roll",
+            50,
+            10000,
+            650,
+            key=f"{prefix}_truckcost"
+        )
+
+    with c4:
+
+        gis_hours = st.number_input(
+            "GIS Hours",
+            1,
+            5000,
+            140,
+            key=f"{prefix}_gis"
+        )
+
+        gis_rate = st.number_input(
+            "GIS Hourly Rate",
+            50,
+            1000,
+            185,
+            key=f"{prefix}_gisrate"
+        )
+
+    return {
+        "teams": teams,
+        "team_rate": team_rate,
+        "helicopters": helicopters,
+        "heli_rate": heli_rate,
+        "trucks": trucks,
+        "truck_cost": truck_cost,
+        "gis_hours": gis_hours,
+        "gis_rate": gis_rate
+    }
+
+# ---------------------------------------------------
+# CALCULATIONS
+# ---------------------------------------------------
+
+def calculate(data):
+
+    labor = data["teams"] * 40 * data["team_rate"]
+
+    aviation = (
+        data["helicopters"]
+        * 30
+        * data["heli_rate"]
+    )
+
+    logistics = (
+        data["trucks"]
+        * data["truck_cost"]
+    )
+
+    intelligence = (
+        data["gis_hours"]
+        * data["gis_rate"]
+    )
+
+    manual_total = (
+        labor
+        + aviation
+        + logistics
+        + intelligence
+    )
+
+    optimized_total = (
+        labor * (1 - labor_reduction)
+        + aviation * 0.20
+        + logistics * (1 - logistics_reduction)
+        + intelligence * 0.08
+    )
+
+    savings = manual_total - optimized_total
+
+    roi = (
+        (savings * annual_events - subscription)
+        / subscription
+    ) * 100
+
+    return {
+        "manual": manual_total,
+        "optimized": optimized_total,
+        "savings": savings,
+        "roi": roi,
+        "breakdown": {
+            "Labor": labor,
+            "Aviation": aviation,
+            "Logistics": logistics,
+            "GIS": intelligence
+        }
+    }
+
+# ---------------------------------------------------
+# TABS
+# ---------------------------------------------------
+
+tabs = st.tabs([
+    "Local Council",
+    "Emergency Services",
+    "Utilities"
+])
+
+results = []
+
+for idx, tab in enumerate(tabs):
+
+    with tab:
+
+        data = vertical_inputs(f"v{idx}")
+
+        result = calculate(data)
+
+        results.append(result)
+
+        c1, c2, c3 = st.columns(3)
+
+        with c1:
+            st.markdown(f"""
+            <div class="metric-card">
+                <div class="label">Per Event Savings</div>
+                <div class="big-number">
+                    ${result['savings']:,.0f}
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+        with c2:
+            st.markdown(f"""
+            <div class="metric-card">
+                <div class="label">Estimated ROI</div>
+                <div class="big-number">
+                    {result['roi']:.0f}%
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+        with c3:
+            payback = subscription / max(result['savings'], 1)
+
+            st.markdown(f"""
+            <div class="metric-card">
+                <div class="label">Payback Period</div>
+                <div class="big-number">
+                    {payback:.1f} Events
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+        fig = go.Figure()
+
+        fig.add_trace(go.Bar(
+            name="Manual",
+            x=list(result["breakdown"].keys()),
+            y=list(result["breakdown"].values())
+        ))
+
+        fig.add_trace(go.Bar(
+            name="ICEYE Optimized",
+            x=list(result["breakdown"].keys()),
+            y=[v * 0.2 for v in result["breakdown"].values()]
+        ))
+
+        fig.update_layout(
+            height=420,
+            barmode="group",
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
+            font_color=TEXT,
+            margin=dict(l=0, r=0, t=30, b=0)
+        )
+
+        st.plotly_chart(
+            fig,
+            use_container_width=True
+        )
+
+# ---------------------------------------------------
+# EXEC SUMMARY
+# ---------------------------------------------------
+
+manual_annual = sum(r["manual"] for r in results) * annual_events
+optimized_annual = (
+    sum(r["optimized"] for r in results)
+    * annual_events
+) + subscription
+
+net = manual_annual - optimized_annual
+
+st.markdown("<br>", unsafe_allow_html=True)
+
+st.markdown(f"""
+<div class="hero">
+
+    <div class="label">
+        Net Annual Operational Dividend
+    </div>
+
+    <div class="hero-title">
+        ${net:,.0f}
+    </div>
+
+    <div class="hero-sub">
+        Including platform licensing and operational optimization
+    </div>
+
+</div>
 """, unsafe_allow_html=True)
