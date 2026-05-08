@@ -1,136 +1,191 @@
 import streamlit as st
-import pandas as pd
 import base64
 from fpdf import FPDF
 
-# --- 1. UI SETUP & BRANDING ---
-st.set_page_config(page_title="ICEYE | Strategic ROI", layout="wide")
-ICEYE_BLUE, ICEYE_DARK = "#39BBF0", "#0B0C10"
+# --- 1. THE DESIGN SYSTEM (CSS) ---
+st.set_page_config(page_title="ICEYE ROI Dashboard", layout="wide")
+
+ICEYE_BLUE = "#39BBF0"
+BACKGROUND = "#0B0C10"
+CARD_BG = "rgba(255, 255, 255, 0.03)"
+BORDER_COLOR = "rgba(255, 255, 255, 0.1)"
 
 st.markdown(f"""
     <style>
-    .stApp {{ background-color: {ICEYE_DARK}; color: #FFFFFF; font-family: 'Inter', sans-serif; }}
-    .stTabs [data-baseweb="tab"] {{ height: 50px; background-color: #111827; color: #9CA3AF; font-weight: 700; }}
-    .stTabs [aria-selected="true"] {{ background-color: {ICEYE_BLUE} !important; color: #000 !important; }}
-    .formula-card {{ background: #111827; border: 1px solid {ICEYE_BLUE}44; padding: 15px; border-radius: 4px; margin: 10px 0; }}
-    .math-text {{ font-family: 'Courier New', monospace; color: {ICEYE_BLUE}; font-size: 0.85rem; }}
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap');
+    
+    .stApp {{
+        background-color: {BACKGROUND};
+        color: #FFFFFF;
+        font-family: 'Inter', sans-serif;
+    }}
+    
+    /* Dribbble-style Metric Card */
+    .metric-card {{
+        background: {CARD_BG};
+        border: 1px solid {BORDER_COLOR};
+        border-radius: 16px;
+        padding: 24px;
+        text-align: left;
+        backdrop-filter: blur(10px);
+        margin-bottom: 20px;
+    }}
+    
+    .metric-label {{
+        color: #94A3B8;
+        font-size: 0.85rem;
+        font-weight: 600;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        margin-bottom: 8px;
+    }}
+    
+    .metric-value {{
+        font-size: 2.2rem;
+        font-weight: 800;
+        color: #FFFFFF;
+    }}
+    
+    .metric-delta {{
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: {ICEYE_BLUE};
+    }}
+
+    /* Customizing Streamlit Tabs to look like a Sidebar/Menu */
+    .stTabs [data-baseweb="tab-list"] {{
+        gap: 8px;
+        background-color: transparent;
+    }}
+
+    .stTabs [data-baseweb="tab"] {{
+        height: 45px;
+        white-space: pre-wrap;
+        background-color: {CARD_BG};
+        border-radius: 8px;
+        color: #94A3B8;
+        border: 1px solid {BORDER_COLOR};
+        padding: 10px 20px;
+        font-weight: 600;
+    }}
+
+    .stTabs [aria-selected="true"] {{
+        background-color: {ICEYE_BLUE} !important;
+        color: {BACKGROUND} !important;
+        border: none !important;
+    }}
+
+    /* Input Field Styling */
+    div[data-baseweb="input"] {{
+        background-color: rgba(255,255,255,0.05) !important;
+        border-radius: 8px !important;
+    }}
     </style>
 """, unsafe_allow_html=True)
 
-# --- 2. GLOBAL UNIT RATES (SIDEBAR) ---
-with st.sidebar:
-    st.image("https://www.iceye.com/hubfs/iceye-logo.svg", width=150)
-    st.markdown("### 📊 UNIT COST CONTROL")
+# --- 2. HEADER SECTION ---
+col_logo, col_title = st.columns([1, 4])
+with col_logo:
+    st.image("https://www.iceye.com/hubfs/iceye-logo.svg", width=120)
+with col_title:
+    st.markdown("<h1 style='margin-top:0; font-weight:800;'>Operational Impact <span style='color:"+ICEYE_BLUE+";'>Analysis</span></h1>", unsafe_allow_html=True)
+
+# --- 3. THE GLOBAL SETTINGS ---
+with st.container():
+    st.markdown("### ⚙️ Global Assumptions")
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        annual_events = st.number_input("Annual Major Events", value=2)
+    with c2:
+        iceye_sub = st.number_input("Annual ICEYE Access Fee", value=385000)
+    with c3:
+        currency = st.selectbox("Currency", ["USD", "GBP", "EUR", "AUD"])
+
+# --- 4. THE CALCULATOR CORE ---
+t1, t2, t3 = st.tabs(["🏛️ Local Council", "🚨 Public Safety", "⚡ Utilities"])
+
+# Standardized Layout for Tabs
+def render_tab_ui(title, manual_logic, iceye_logic, settings_callback):
+    st.markdown(f"## {title}")
+    col_settings, col_visuals = st.columns([1, 2], gap="large")
     
-    with st.expander("🚁 AVIATION & ASSETS", expanded=True):
-        heli_hr = st.number_input("Heli (Twin) $/hr", value=6500)
-        plane_hr = st.number_input("Fixed-Wing $/hr", value=2800)
-        truck_roll_cost = st.number_input("Truck Roll Admin Fee $", value=550)
+    with col_settings:
+        st.markdown("<p style='color:"+ICEYE_BLUE+"; font-weight:700;'>CONFIGURATIONS</p>", unsafe_allow_html=True)
+        inputs = settings_callback()
+    
+    with col_visuals:
+        m_cost = manual_logic(inputs)
+        i_cost = iceye_logic(inputs)
+        savings = m_cost - i_cost
         
-    with st.expander("👷 GROUND & ANALYST", expanded=True):
-        inspector_hr = st.number_input("Field Inspector $/hr", value=175)
-        gis_hr = st.number_input("GIS Analyst $/hr", value=210)
-    
-    st.divider()
-    annual_events = st.slider("Major Events / Year", 1, 5, 2)
-    iceye_sub = st.number_input("ICEYE Annual Access Fee ($)", value=385000)
+        # Dashboard Cards
+        v1, v2 = st.columns(2)
+        with v1:
+            st.markdown(f"""<div class='metric-card'><div class='metric-label'>Manual Operational Burn</div><div class='metric-value'>${m_cost:,.0f}</div><div class='metric-delta' style='color:#FF4B4B;'>Baseline Expense</div></div>""", unsafe_allow_html=True)
+        with v2:
+            st.markdown(f"""<div class='metric-card'><div class='metric-label'>ICEYE Augmented Cost</div><div class='metric-value'>${i_cost:,.0f}</div><div class='metric-delta'>Capability Optimized</div></div>""", unsafe_allow_html=True)
+        
+        st.markdown(f"""<div class='metric-card' style='border: 1px solid {ICEYE_BLUE};'><div class='metric-label'>Per Event Savings</div><div class='metric-value' style='color:{ICEYE_BLUE};'>${savings:,.0f}</div></div>""", unsafe_allow_html=True)
+        
+        return m_cost, i_cost
 
-# --- 3. OPERATIONAL CALCULATOR ---
-st.title("Strategic Capability & ROI Tool")
-st.caption("Quantifying the 6-Hour 'Rapid Impact' and 24-Hour 'Flood Insights' Advantage")
+# --- TAB LOGIC ---
+def council_settings():
+    props = st.number_input("Impacted Properties", value=2500)
+    inspectors = st.number_input("No. of Inspectors", value=12)
+    hr_rate = st.number_input("Inspector Hourly Rate", value=175)
+    truck = st.number_input("Truck Roll Admin Fee", value=550)
+    gis_hrs = st.number_input("Manual Mapping Hrs", value=80)
+    gis_rate = st.number_input("GIS Analyst Rate", value=210)
+    verif_rate = st.slider("Field Verification Required %", 1, 100, 15)
+    return (props, inspectors, hr_rate, truck, gis_hrs, gis_rate, verif_rate)
 
-t1, t2, t3 = st.tabs(["🏛️ LOCAL COUNCIL", "🚨 PUBLIC SAFETY", "⚡ UTILITIES"])
+def council_manual(inputs):
+    return (inputs[0] * 1.5 * inputs[2]) + (inputs[0] * inputs[3]) + (inputs[4] * inputs[5])
 
-# --- TAB 1: COUNCIL (RDA & INSPECTIONS) ---
+def council_iceye(inputs):
+    # (Props * Verification% * 1.5h * Rate) + (Trucks * Verification%) + 4h Ingest
+    return (inputs[0] * (inputs[6]/100) * 1.5 * inputs[2]) + (inputs[0] * (inputs[6]/100) * inputs[3]) + (4 * inputs[5])
+
 with t1:
-    st.header("Council: Damage Assessment & GIS Latency")
-    c_col1, c_col2 = st.columns(2)
-    with c_col1:
-        st.subheader("🔴 Manual RDA Lifecycle")
-        c_props = st.number_input("Properties in Impact Zone", value=2500)
-        c_inspectors = st.number_input("No. of Field Inspectors", value=12)
-        c_hrs_per_prop = st.slider("Manual Hours / Prop (Drive + Log)", 0.5, 4.0, 1.5)
-        c_gis_days = st.slider("Days to produce Manual Flood Map", 1, 10, 5)
-        
-        manual_c_labor = (c_props * c_hrs_per_prop * inspector_hr)
-        manual_c_trucks = (c_props * truck_roll_cost)
-        manual_c_gis = (c_gis_days * 8 * 2 * gis_hr) # 2 analysts
-        manual_c_total = manual_c_labor + manual_c_trucks + manual_c_gis
-        
-        st.markdown(f"""<div class='formula-card'><p class='math-text'>(Props[{c_props}]*Hrs[{c_hrs_per_prop}]*${inspector_hr}) + (Props*${truck_roll_cost}) + (GIS Team Days)</p>
-        <h2 style='color:#FF4B4B'>${manual_c_total:,.0f}</h2></div>""", unsafe_allow_html=True)
-    
-    with c_col2:
-        st.subheader("🟢 ICEYE-Enabled Verification")
-        st.info("⚡ ICEYE 24h Insights: Ready-to-use depth/extent GeoJSON.")
-        c_verif_rate = st.slider("Field Verification Rate (%)", 5, 50, 15)
-        iceye_c_total = (c_props * (c_verif_rate/100) * c_hrs_per_prop * inspector_hr) + \
-                        (c_props * (c_verif_rate/100) * truck_roll_cost) + (4 * gis_hr) # 4 hrs integration
-        
-        st.markdown(f"""<div class='formula-card'><p class='math-text'>(Target-Props[{int(c_props*(c_verif_rate/100))}]*Labor+Trucks) + (4h GIS Integration)</p>
-        <h2 style='color:{ICEYE_BLUE}'>${iceye_c_total:,.0f}</h2></div>""", unsafe_allow_html=True)
+    m_c, i_c = render_tab_ui("Council Damage Assessment", council_manual, council_iceye, council_settings)
 
-# --- TAB 2: PUBLIC SAFETY (RECON) ---
 with t2:
-    st.header("Public Safety: Mission Realignment")
-    p_col1, p_col2 = st.columns(2)
-    with p_col1:
-        st.subheader("🔴 Manual Discovery")
-        p_helis = st.number_input("Helis Deployed", 1, 10, 2)
-        p_planes = st.number_input("Planes Deployed", 1, 5, 1)
-        p_flight_hrs = st.number_input("Avg Flight Hrs per Asset", value=30)
-        
-        manual_ps = (p_helis * p_flight_hrs * heli_hr) + (p_planes * p_flight_hrs * plane_hr)
-        st.markdown(f"<div class='formula-card'><h2 style='color:#FF4B4B'>${manual_ps:,.0f}</h2></div>", unsafe_allow_html=True)
+    # Public Safety Logic (Condensed for space)
+    st.markdown("### Public Safety Recon")
+    p_heli = st.number_input("Helis Deployed", value=2)
+    p_h_rate = st.number_input("Heli $/hr", value=6500)
+    p_h_hrs = st.number_input("Manual Search Hrs", value=60)
     
-    with p_col2:
-        st.subheader("🟢 ICEYE Rapid Impact")
-        st.info("⚡ ICEYE 6h Rapid Impact: 6-hourly heartbeat of observed extent.")
-        p_tactical_heli = st.number_input("Tactical Heli Hrs (Rescue Only)", value=5)
-        iceye_ps = (p_tactical_heli * heli_hr) + (8 * gis_hr)
-        st.markdown(f"<div class='formula-card'><h2 style='color:{ICEYE_BLUE}'>${iceye_ps:,.0f}</h2></div>", unsafe_allow_html=True)
+    m_p = (p_heli * p_h_hrs * p_h_rate)
+    i_p = (10 * p_h_rate) # Tactical only
+    
+    v1, v2 = st.columns(2)
+    with v1: st.markdown(f"<div class='metric-card'><div class='metric-label'>Manual Air Search</div><div class='metric-value'>${m_p:,.0f}</div></div>", unsafe_allow_html=True)
+    with v2: st.markdown(f"<div class='metric-card'><div class='metric-label'>ICEYE Air Recon</div><div class='metric-value'>${i_p:,.0f}</div></div>", unsafe_allow_html=True)
 
-# --- TAB 3: UTILITIES (RESTORED TRUCK ROLLS) ---
 with t3:
-    st.header("Utility: Field Force Burn")
-    u_col1, u_col2 = st.columns(2)
-    with u_col1:
-        u_assets = st.number_input("Substations/Assets", value=80)
-        manual_u = (u_assets * 4 * inspector_hr) + (u_assets * truck_roll_cost)
-        st.subheader("🔴 Blind Patrols")
-        st.markdown(f"<div class='formula-card'><h2 style='color:#FF4B4B'>${manual_u:,.0f}</h2></div>", unsafe_allow_html=True)
-    with u_col2:
-        u_clearance = st.slider("SAR Remote Clearance %", 50, 95, 85)
-        iceye_u = (u_assets * (1-u_clearance/100) * 4 * inspector_hr) + \
-                  (u_assets * (1-u_clearance/100) * truck_roll_cost)
-        st.subheader("🟢 SAR-Led Clearance")
-        st.markdown(f"<div class='formula-card'><h2 style='color:{ICEYE_BLUE}'>${iceye_u:,.0f}</h2></div>", unsafe_allow_html=True)
+    st.markdown("### Utility Grid Clearance")
+    u_assets = st.number_input("Assets to Check", value=80)
+    u_rate = st.number_input("Crew $/hr", value=225)
+    u_truck = st.number_input("Heavy Vehicle Fee", value=850)
+    u_clear = st.slider("SAR Remote Clearance %", 1, 100, 85)
+    
+    m_u = (u_assets * 4 * u_rate) + (u_assets * u_truck)
+    i_u = (u_assets * (1-u_clear/100) * 4 * u_rate) + (u_assets * (1-u_clear/100) * u_truck)
+    
+    v1, v2 = st.columns(2)
+    with v1: st.markdown(f"<div class='metric-card'><div class='metric-label'>Blind Patrols</div><div class='metric-value'>${m_u:,.0f}</div></div>", unsafe_allow_html=True)
+    with v2: st.markdown(f"<div class='metric-card'><div class='metric-label'>SAR-Led Patrols</div><div class='metric-value'>${i_u:,.0f}</div></div>", unsafe_allow_html=True)
 
-# --- 4. SUMMARY & PDF ---
+# --- 5. THE BOTTOM BAR (STICKY ROI) ---
 st.divider()
-total_manual_pa = (manual_c_total + manual_ps + manual_u) * annual_events
-total_iceye_pa = ((iceye_c_total + iceye_ps + iceye_u) * annual_events) + iceye_sub
-net_dividend = total_manual_pa - total_iceye_pa
+total_savings = ((m_c + m_p + m_u) * annual_events) - (((i_c + i_p + i_u) * annual_events) + iceye_sub)
 
-st.markdown(f"<div style='text-align:center; padding:30px; border:2px solid {ICEYE_BLUE};'><h3>NET ANNUAL STRATEGIC DIVIDEND</h3><h1 style='font-size:5rem;'>${net_dividend:,.0f}</h1></div>", unsafe_allow_html=True)
-
-# PDF EXPORT LOGIC
-def create_pdf(m, i, d):
-    pdf = FPDF()
-    pdf.add_page()
-    pdf.set_font("Arial", 'B', 16)
-    pdf.cell(40, 10, "ICEYE ROI Executive Briefing")
-    pdf.ln(20)
-    pdf.set_font("Arial", '', 12)
-    pdf.cell(40, 10, f"Annual Manual Operational Burn: ${m:,.0f}")
-    pdf.ln(10)
-    pdf.cell(40, 10, f"Annual ICEYE-Augmented Cost: ${i:,.0f}")
-    pdf.ln(20)
-    pdf.set_font("Arial", 'B', 14)
-    pdf.cell(40, 10, f"NET BUDGET DIVIDEND: ${d:,.0f}")
-    return pdf.output(dest='S').encode('latin-1')
-
-if st.button("Export Executive Briefing (PDF)"):
-    pdf_bytes = create_pdf(total_manual_pa, total_iceye_pa, net_dividend)
-    b64 = base64.b64encode(pdf_bytes).decode()
-    st.markdown(f'<a href="data:application/pdf;base64,{b64}" download="ICEYE_ROI_Briefing.pdf">Download PDF Briefing</a>', unsafe_allow_html=True)
+st.markdown(f"""
+    <div style='background: linear-gradient(90deg, {ICEYE_BLUE} 0%, #1e40af 100%); padding: 40px; border-radius: 20px; text-align: center;'>
+        <p style='color: white; font-weight: 800; letter-spacing: 3px; margin:0;'>TOTAL ANNUAL STRATEGIC DIVIDEND</p>
+        <h1 style='color: white; font-size: 5rem; margin: 0;'>${total_savings:,.0f}</h1>
+        <p style='color: rgba(255,255,255,0.7);'>Net of ICEYE Subscription & Manual Operational Reductions</p>
+    </div>
+""", unsafe_allow_html=True)
