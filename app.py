@@ -1,159 +1,126 @@
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
-from fpdf import FPDF
-import datetime
 
-# --- 1. SETTINGS & GLASSMORPHIC CSS ---
-st.set_page_config(page_title="ICEYE Intelligence ROI", layout="wide", initial_sidebar_state="expanded")
+# --- 1. CONFIG & THEME ---
+st.set_page_config(page_title="ICEYE Strategic ROI", layout="wide", page_icon="🛰️")
 
-def apply_modern_theme():
-    st.markdown("""
-        <style>
-        /* Main background */
-        .stApp {
-            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-            color: #f8fafc;
-        }
-        /* Glassmorphism cards */
-        .metric-card {
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 16px;
-            padding: 24px;
-            text-align: center;
-            backdrop-filter: blur(10px);
-            transition: transform 0.3s ease;
-        }
-        .metric-card:hover {
-            transform: translateY(-5px);
-            border-color: #38bdf8;
-        }
-        .metric-value {
-            font-size: 2.2rem;
-            font-weight: 800;
-            color: #38bdf8;
-            margin: 10px 0;
-        }
-        .metric-label {
-            font-size: 0.9rem;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            color: #94a3b8;
-        }
-        /* Sidebar styling */
-        section[data-testid="stSidebar"] {
-            background-color: rgba(15, 23, 42, 0.8);
-        }
-        /* Hide default streamlit branding */
-        #MainMenu {visibility: hidden;}
-        footer {visibility: hidden;}
-        </style>
-    """, unsafe_allow_html=True)
+# High-end Dark Theme CSS
+st.markdown("""
+    <style>
+    .stApp { background-color: #0B0E14; color: #E2E8F0; }
+    .executive-card { 
+        background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%);
+        border-left: 5px solid #38BDF8; border-radius: 10px; padding: 25px; margin-bottom: 20px;
+    }
+    .metric-value { font-size: 2.2rem; font-weight: 800; color: #38BDF8; }
+    .metric-label { font-size: 1rem; color: #94A3B8; text-transform: uppercase; letter-spacing: 1px; }
+    </style>
+""", unsafe_allow_html=True)
 
-apply_modern_theme()
-
-# --- 2. LOGIC & MATH (DRY - Don't Repeat Yourself) ---
-def calculate_roi(ev, sub, lat, h_rate, h_hrs, h_stby, d_rate, d_hrs, d_stby, t_cnt, t_burn, c_days, d_pen, d_ev, g_cnt, g_rate, l_proc, i_proc):
-    leg_air = ((h_rate * h_hrs) + (h_stby * c_days) + (d_rate * d_hrs) + (d_stby * c_days)) * ev
-    leg_gis = (g_cnt * g_rate * l_proc) * ev
-    leg_field = ((t_cnt * t_burn * c_days) + (d_ev * d_pen)) * ev
-    
-    ice_gis = (g_cnt * g_rate * i_proc) * ev
-    ice_field = (t_cnt * t_burn * (lat / 24.0)) * ev
-    
-    total_leg = leg_air + leg_gis + leg_field
-    total_ice = ice_gis + ice_field + sub
-    
-    return total_leg, total_ice, leg_air, (l_proc - i_proc) * ev
-
-# --- 3. SIDEBAR CONTROLS (THE "ENGINE ROOM") ---
+# --- 2. SIDEBAR: GLOBAL COST ASSUMPTIONS ---
 with st.sidebar:
-    st.image("https://www.iceye.com/hubfs/iceye-logo.svg", width=120)
-    st.markdown("### 🛠️ Configuration")
+    st.title("Strategic Settings")
+    st.info("Input your baseline labor and contract rates below. These drive the calculations across all sectors.")
     
-    with st.expander("📡 ICEYE Parameters", expanded=True):
-        events_pa = st.slider("Events / Year", 1, 20, 4)
-        annual_sub = st.number_input("Subscription ($)", value=250000.0)
-        sar_latency = st.slider("Latency (Hrs)", 1, 24, 8)
+    gis_surge_rate = st.number_input("GIS Analyst Surge Rate ($/hr)", value=185, help="Fully burdened hourly rate for senior GIS staff during emergency activation.")
+    admin_overhead = st.number_input("Admin/Ops Burn ($/Day)", value=12500, help="Daily cost of running a Command Center or Recovery Office.")
+    events_per_year = st.slider("Significant Events per Annum", 1, 8, 3)
+    subscription_cost = st.number_input("ICEYE Annual Subscription ($)", value=350000, step=50000)
 
-    with st.expander("🚁 Aviation Assets"):
-        h_rate = st.number_input("Heli $/Hr", value=3500.0)
-        h_hrs = st.number_input("Heli Hrs/Event", value=8.0)
-        h_stby = st.number_input("Heli Standby $/Day", value=5000.0)
-        d_rate = st.number_input("Drone $/Hr", value=250.0)
-        d_hrs = st.number_input("Drone Hrs/Event", value=15.0)
-        d_stby = st.number_input("Drone Standby $/Day", value=1200.0)
+# --- 3. HEADER ---
+st.title("🛰️ ICEYE Intelligence: Strategic ROI Framework")
+st.markdown("#### Transitioning from 'Anecdotal Response' to 'Data-Driven Recovery'")
 
-    with st.expander("🚛 Field & GIS Teams"):
-        t_cnt = st.number_input("Active Teams", value=6)
-        t_burn = st.number_input("Daily Team Burn ($)", value=12500.0)
-        c_days = st.number_input("Cloud Window (Days)", value=2.0)
-        g_rate = st.number_input("GIS $/Hr", value=120.0)
-        l_proc = st.number_input("Legacy GIS Hrs", value=12.0)
-        i_proc = st.number_input("ICEYE GIS Hrs", value=2.0)
-        d_pen = 2800.0 # Keeping some constants for clean UI
-        d_ev = 10
-        g_cnt = 2
+tab1, tab2, tab3 = st.tabs(["🚨 COMMISSIONER (Emergency Services)", "🏛️ GENERAL MANAGER (Local Council)", "⚡ COO (Utility Networks)"])
 
-# --- 4. CALCULATION RUN ---
-total_legacy, total_iceye, air_savings, hrs_saved = calculate_roi(
-    events_pa, annual_sub, sar_latency, h_rate, h_hrs, h_stby, d_rate, d_hrs, d_stby, 
-    t_cnt, t_burn, c_days, d_pen, d_ev, g_cnt, g_rate, l_proc, i_proc
-)
-net_savings = total_legacy - total_iceye
+# --- TAB 1: EMERGENCY SERVICES (Focus: Asset Reallocation) ---
+with tab1:
+    col1, col2 = st.columns([1, 2])
+    with col1:
+        st.markdown("### Asset & Team Inputs")
+        heli_rate = st.number_input("Rotary-Wing Flight Rate ($/hr)", value=5200)
+        recon_hrs = st.number_input("Mapping Flight Hours per Event", value=20)
+        crew_turnbacks = st.slider("Recon Crew Turn-backs (Flooded Roads)", 0, 50, 15)
+        gis_hours_saved = st.number_input("GIS Manual Digitization (Hrs/Event)", value=60)
+        
+    with col2:
+        # Logic: Aviation Offset + Safety Gap + GIS Efficiency
+        aviation_savings = heli_rate * recon_hrs
+        crew_safety_val = crew_turnbacks * 8 * 125 # Estimate of wasted crew hours
+        gis_val = gis_hours_saved * gis_surge_rate
+        total_event_savings = (aviation_savings + crew_safety_val + gis_val) * events_per_year
+        net_roi = total_event_savings - subscription_cost
+        
+        st.markdown(f"""
+            <div class="executive-card">
+                <div class="metric-label">Annual Capability Dividend</div>
+                <div class="metric-value">${total_event_savings:,.0f}</div>
+                <p>This represents the <b>Aviation Offset</b>. By replacing traditional recon flights with SAR data, you reallocate ~{recon_hrs * events_per_year} high-risk flight hours to life-saving winch and resupply missions.</p>
+            </div>
+        """, unsafe_allow_html=True)
 
-# --- 5. THE DASHBOARD ---
-st.title("ICEYE | Value Realization Dashboard")
-st.markdown(f"**Analysis Period:** {datetime.date.today().year} Annual Forecast")
+# --- TAB 2: LOCAL COUNCIL (Focus: Capital Velocity) ---
+with tab2:
+    col1, col2 = st.columns([1, 2])
+    with col1:
+        st.markdown("### Financial & Recovery Inputs")
+        drfa_claim = st.number_input("Avg. DRFA Claim Value ($)", value=12000000)
+        interest_rate = st.number_input("Cost of Working Capital (%)", value=6.2)
+        days_saved = st.slider("Funding Acceleration (Days)", 1, 30, 14)
+        inspection_labor = st.number_input("Manual RDA Crew Costs ($/Event)", value=85000)
 
-# Big Stats Row
-m1, m2, m3 = st.columns(3)
+    with col2:
+        # Logic: (Claim Value * Interest / 365) * Days Saved
+        funding_velocity_val = (drfa_claim * (interest_rate/100) / 365) * days_saved
+        admin_savings = days_saved * (admin_overhead * 0.2) # 20% efficiency gain in recovery office
+        total_council_val = (funding_velocity_val + admin_savings + (inspection_labor * 0.4)) * events_per_year
+        
+        st.markdown(f"""
+            <div class="executive-card">
+                <div class="metric-label">Capital Velocity & Labor Efficiency</div>
+                <div class="metric-value">${total_council_val:,.0f}</div>
+                <p>By providing <b>Building-Level Inundation Data</b> within 24 hours, you trigger Category C/D funding grants {days_saved} days faster than manual inspections allow.</p>
+            </div>
+        """, unsafe_allow_html=True)
 
-with m1:
-    st.markdown(f"""<div class="metric-card">
-        <div class="metric-label">Net Annual Recovery</div>
-        <div class="metric-value">${net_savings:,.0f}</div>
-        <div style="color: #4ade80;">↑ {int((net_savings/total_legacy)*100)}% Efficiency Increase</div>
-    </div>""", unsafe_allow_html=True)
+# --- TAB 3: UTILITY COMPANIES (Focus: Regulatory Compliance) ---
+with tab3:
+    col1, col2 = st.columns([1, 2])
+    with col1:
+        st.markdown("### Reliability & Regulatory Inputs")
+        caidi_impact = st.number_input("Customer Minutes Saved (SAIDI)", value=1200000)
+        voll_rate = st.number_input("Value of Lost Load ($/MWh)", value=35000) # Australian standard
+        pass_through_risk = st.number_input("Emergency Capex at Risk ($)", value=15000000)
+        audit_rejection_prob = st.slider("Historical Audit Rejection Rate (%)", 0, 10, 3)
 
-with m2:
-    st.markdown(f"""<div class="metric-card">
-        <div class="metric-label">Aviation Budget Offset</div>
-        <div class="metric-value">${air_savings:,.0f}</div>
-        <div style="color: #94a3b8;">Reallocated Capital</div>
-    </div>""", unsafe_allow_html=True)
+    with col2:
+        # Logic: Reliability gains + Regulatory certainty
+        reliability_val = (caidi_impact / 60) * (voll_rate / 1000) # Rough MWh conversion
+        regulatory_val = pass_through_risk * (audit_rejection_prob / 100)
+        total_utility_val = (reliability_val + regulatory_val) * events_per_year
+        
+        st.markdown(f"""
+            <div class="executive-card">
+                <div class="metric-label">Regulatory & Reliability Value</div>
+                <div class="metric-value">${total_utility_val:,.0f}</div>
+                <p>Ensures <b>AER Compliance</b>. Providing SAR-backed evidence of "Force Majeure" protects your cost pass-through applications from regulatory claw-backs.</p>
+            </div>
+        """, unsafe_allow_html=True)
 
-with m3:
-    st.markdown(f"""<div class="metric-card">
-        <div class="metric-label">GIS Time Recovery</div>
-        <div class="metric-value">{hrs_saved:,.0f} Hrs</div>
-        <div style="color: #94a3b8;">Direct Labor Savings</div>
-    </div>""", unsafe_allow_html=True)
-
+# --- 4. SUMMARY VISUALIZATION ---
 st.divider()
+final_data = pd.DataFrame({
+    "Sector": ["Emergency Services", "Local Council", "Utility Networks"],
+    "Gross Savings ($)": [total_event_savings, total_council_val, total_utility_val],
+    "ICEYE Subscription ($)": [subscription_cost] * 3
+})
 
-# Charts Row
-c_left, c_right = st.columns([2, 1])
+fig = go.Figure()
+fig.add_trace(go.Bar(name='Gross Annual Benefit', x=final_data["Sector"], y=final_data["Gross Savings ($)"], marker_color='#38BDF8'))
+fig.add_trace(go.Scatter(name='Annual Subscription Cost', x=final_data["Sector"], y=final_data["ICEYE Subscription ($)"], mode='lines+markers', line=dict(color='#F43F5E', width=4)))
 
-with c_left:
-    st.subheader("Cost Distribution: Legacy vs. ICEYE")
-    fig = go.Figure(data=[
-        go.Bar(name='Legacy Model', x=['Total Cost'], y=[total_legacy], marker_color='#64748b'),
-        go.Bar(name='ICEYE Model', x=['Total Cost'], y=[total_iceye], marker_color='#38bdf8')
-    ])
-    fig.update_layout(barmode='group', paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font_color="#f8fafc")
-    st.plotly_chart(fig, use_container_width=True)
+fig.update_layout(title="Multi-Sector ROI Summary", barmode='group', paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color="#E2E8F0"))
+st.plotly_chart(fig, use_container_width=True)
 
-with c_right:
-    st.subheader("Executive Actions")
-    st.info("💡 **Key Insight:** Reducing info-latency from 48h to 8h is the primary driver of your field labor recovery.")
-    
-    if st.button("🚀 Finalize & Export PDF"):
-        st.toast("Generating Secure Report...")
-        # (PDF generation logic would go here - similar to previous code)
-        st.success("Report Ready for Download")
-
-# --- 6. "VIBE" CELEBRATION ---
-if net_savings > 1000000:
-    st.balloons()
+st.success("Analysis Complete: This framework demonstrates that ICEYE pays for itself by reducing 'Decision Latency' across the three most expensive phases of Australian disaster management.")
