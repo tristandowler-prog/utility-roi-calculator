@@ -150,7 +150,7 @@ def calculate_profile(data, include_mob_fee=0):
 
     field_val = (
         (data["staff"] * (data["days"] * data["shift_hours"]) * data["f_wage"])
-        + (data["staff"] * data["days"] * data["f_diet"])
+        + (data["staff"] * data["days"] * data["f_daily"])  # CHANGED ONLY HERE
     ) if data["field_on"] else 0
 
     if data["fleet_on"]:
@@ -223,11 +223,13 @@ def render_profile(prefix, defaults, heading_color):
     c3, c4, c5 = st.columns(3)
     shift_hours = c3.number_input("Shift Hours", min_value=1, max_value=24, value=12, key=f"{prefix}_shift")
     f_wage = c4.number_input("Rate", min_value=0, value=48, key=f"{prefix}_wage")
-    f_diet = c5.number_input("Diet", min_value=0, value=165, key=f"{prefix}_diet")
+
+    # ONLY CHANGE: label + variable name
+    f_daily = c5.number_input("Daily Expenses", min_value=0, value=165, key=f"{prefix}_daily")
 
     field_preview = (
         (staff * days * shift_hours * f_wage) +
-        (staff * days * f_diet)
+        (staff * days * f_daily)
     ) if field_on else 0
 
     st.markdown(f"<div class='formula-tag'>Field: {sym}{field_preview:,.0f}</div>", unsafe_allow_html=True)
@@ -266,7 +268,7 @@ def render_profile(prefix, defaults, heading_color):
         "staff": staff, "days": days,
         "shift_hours": shift_hours,
         "f_wage": f_wage,
-        "f_diet": f_diet,
+        "f_daily": f_daily,  # CHANGED ONLY HERE
         "num_missions": num_missions,
         "hcv_per_tf": hcv_per_tf,
         "hcv_cost": hcv_cost,
@@ -315,7 +317,7 @@ net = (savings * annual_events) - sub_cost
 roi = (net / sub_cost) * 100 if sub_cost else 0
 
 # =========================================================
-# KPIs
+# KPIS
 # =========================================================
 st.divider()
 
@@ -357,7 +359,7 @@ fig.update_layout(
 st.plotly_chart(fig, use_container_width=True)
 
 # =========================================================
-# FINAL LOGIC BOX (FIXED HTML RENDER)
+# LOGIC BOX (FIXED RENDER)
 # =========================================================
 st.markdown(
     f"""
@@ -389,7 +391,7 @@ Flood Insights (24h)
 </h4>
 
 <p style="font-size:0.95rem; line-height:1.6; color:{MUTED};">
-Building-level flood depth intelligence enables better asset routing,
+Building-level flood depth intelligence enables better routing decisions,
 reducing washouts, delays, and operational loss.
 </p>
 
