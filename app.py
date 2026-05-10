@@ -10,9 +10,6 @@ st.set_page_config(
     layout="wide"
 )
 
-# Reliable branding link
-LOGO_URL = "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/ICEYE_logo.svg/512px-ICEYE_logo.svg.png"
-
 # Refined Professional Theme
 BG, CARD, BORDER, TEXT, MUTED = "#0B1220", "#111827", "#1E293B", "#F8FAFC", "#94A3B8"
 PRIMARY, SUCCESS, WARNING, ACCENT = "#38BDF8", "#22C55E", "#F59E0B", "#6366F1"
@@ -72,11 +69,7 @@ st.markdown(f"""
 # SIDEBAR & GLOBAL CONTROLS
 # =========================================================
 with st.sidebar:
-    try:
-        st.image(LOGO_URL, width=160)
-    except:
-        st.markdown("### ICEYE")
-    
+    st.markdown("## ▲ ICEYE")
     st.markdown("### Modeller Controls")
     currency = st.selectbox("Currency", ["AUD", "USD", "EUR", "GBP"])
     sym = {"AUD": "$", "USD": "$", "EUR": "€", "GBP": "£"}[currency]
@@ -87,7 +80,7 @@ with st.sidebar:
     
     st.divider()
     st.subheader("Mobilisation Logistics")
-    st.caption("One-off costs for regional transport/activation (typically Current state only).")
+    st.caption("One-off costs for regional activation (Applied to 'Current' only).")
     include_mob = st.toggle("Include Mobilisation Costs", value=False)
     mob_fee = st.number_input(f"Mobilisation Fee ({sym})", value=125000.0) if include_mob else 0
 
@@ -110,65 +103,74 @@ def render_profile(prefix, defaults, color):
     st.markdown('<div class="section-header">Aerial Observation</div>', unsafe_allow_html=True)
     c1, c2, c3 = st.columns(3)
     au = c1.number_input(f"{prefix} Aircraft", value=defaults['au'], key=f"{prefix}_au")
-    ah = c2.number_input(f"{prefix} Flight Hrs/Unit", value=defaults['ah'], key=f"{prefix}_ah")
-    ar = c3.number_input(f"{prefix} Air Rate/Hr", value=defaults['ar'], key=f"{prefix}_ar")
+    ah = c2.number_input(f"{prefix} Flight Hrs", value=defaults['ah'], key=f"{prefix}_ah")
+    ar = c3.number_input(f"{prefix} Dry Rate/Hr", value=defaults['ar'], key=f"{prefix}_ar")
     air_val = au * ah * ar
     st.markdown(f"<div class='formula-tag'>Aerial Total: {sym}{air_val:,.0f}</div>", unsafe_allow_html=True)
 
     # 3. FIELD OPERATIONS
-    st.markdown('<div class="section-header">Field Crews & Subsistence</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-header">Field Personnel</div>', unsafe_allow_html=True)
     c1, c2 = st.columns(2)
-    staff = c1.number_input(f"{prefix} Personnel", value=defaults['staff'], key=f"{prefix}_st")
+    staff = c1.number_input(f"{prefix} Personnel Count", value=defaults['staff'], key=f"{prefix}_st")
     days = c2.number_input(f"{prefix} Deployment Days", value=defaults['days'], key=f"{prefix}_ds")
     
     c3, c4 = st.columns(2)
-    f_wage = c3.number_input(f"{prefix} Op Wage ($/hr)", value=48.0, key=f"{prefix}_fw")
+    f_wage = c3.number_input(f"{prefix} Personnel Rate", value=48.0, key=f"{prefix}_fw")
     f_diet = c4.number_input(f"{prefix} Subsistence/Day", value=165.0, key=f"{prefix}_fd")
     
     field_val = (staff * (days * 12) * f_wage) + (staff * days * f_diet)
-    st.markdown(f"<div class='formula-tag'>Field Total: {sym}{field_val:,.0f}</div>", unsafe_allow_html=True)
+    st.markdown(f"<div class='formula-tag'>Personnel Total: {sym}{field_val:,.0f}</div>", unsafe_allow_html=True)
 
-    # 4. GROUND FLEET - EVERY UNIT EDITABLE
-    st.markdown('<div class="section-header">Ground Fleet & Logistics</div>', unsafe_allow_html=True)
-    f1, f2 = st.columns(2)
-    hcv_units = f1.number_input(f"{prefix} HCV Units", value=defaults['hcv'], key=f"{prefix}_hcv")
-    hcv_roll = f2.number_input(f"{prefix} HCV Roll Cost", value=defaults.get('hcv_r', 850.0), key=f"{prefix}_hcv_r")
+    # 4. TRUCK ROLLS & FLEET (THE CORE SAVINGS LEVER)
+    st.markdown('<div class="section-header">Truck Rolls & Fleet Logistics</div>', unsafe_allow_html=True)
     
-    f3, f4 = st.columns(2)
-    std_units = f3.number_input(f"{prefix} STD Units", value=defaults['std'], key=f"{prefix}_std")
-    std_roll = f4.number_input(f"{prefix} STD Roll Cost", value=defaults.get('std_r', 450.0), key=f"{prefix}_std_r")
+    # The primary "Volume" field
+    num_rolls = st.number_input(f"Total Number of Truck Rolls ({prefix})", value=defaults.get('rolls', 10), key=f"{prefix}_rolls")
     
-    st.markdown('<div style="font-size:0.8rem; color:#94A3B8; margin-top:10px;">Operational Inefficiency (Aborted Rolls/Turnarounds)</div>', unsafe_allow_html=True)
+    col_hcv, col_std = st.columns(2)
+    with col_hcv:
+        hcv_per_roll = st.number_input(f"HCVs per Roll", value=defaults.get('hcv_per', 2), key=f"{prefix}_hcv_p")
+        hcv_cost = st.number_input(f"HCV Roll Cost ({sym})", value=850.0, key=f"{prefix}_hcv_c")
+    with col_std:
+        std_per_roll = st.number_input(f"STDs per Roll", value=defaults.get('std_per', 4), key=f"{prefix}_std_p")
+        std_cost = st.number_input(f"STD Roll Cost ({sym})", value=450.0, key=f"{prefix}_std_c")
+    
+    # Aborted Missions
+    st.markdown('<div style="font-size:0.8rem; color:#94A3B8; margin-top:10px;">Operational Inefficiency (Aborted Rolls)</div>', unsafe_allow_html=True)
     f5, f6 = st.columns(2)
-    abort_units = f5.number_input(f"{prefix} Aborted Missions", value=defaults.get('aborts', 40), key=f"{prefix}_abt")
-    abort_cost = f6.number_input(f"{prefix} Sunk Cost/Abort", value=550.0, key=f"{prefix}_abt_c")
+    abort_units = f5.number_input(f"Aborted Missions ({prefix})", value=defaults.get('aborts', 5), key=f"{prefix}_abt")
+    abort_cost = f6.number_input(f"Sunk Cost/Abort", value=550.0, key=f"{prefix}_abt_c")
     
-    fleet_val = (hcv_units * hcv_roll) + (std_units * std_roll) + (abort_units * abort_cost)
+    # Calculation Logic
+    roll_ops = num_rolls * ((hcv_per_roll * hcv_cost) + (std_per_roll * std_cost))
+    abort_ops = abort_units * abort_cost
+    fleet_val = roll_ops + abort_ops
+    
     st.markdown(f"<div class='formula-tag'>Fleet Total: {sym}{fleet_val:,.0f}</div>", unsafe_allow_html=True)
 
-    # SUMMATION
+    # TOTAL SUMMATION
     final_mob = mob_fee if (prefix == "Current" and include_mob) else 0
     total = intel_val + air_val + field_val + fleet_val + final_mob
-    return {"total": total, "intel": intel_val, "air": air_val, "field": field_val, "fleet": fleet_val, "days": days, "staff": staff}
+    return {"total": total, "intel": intel_val, "air": air_val, "field": field_val, "fleet": fleet_val, "days": days, "rolls": num_rolls}
 
 # =========================================================
 # MAIN DASHBOARD
 # =========================================================
 st.markdown('<h1 style="color:white; margin-top:-30px;">ICEYE Subscription ROI: Precision Response Modeller</h1>', unsafe_allow_html=True)
-st.markdown(f"**Strategic Assessment:** Transitioning from *Wide-Area Search* to *Targeted Response* using SAR Ground Truth.")
+st.markdown(f"**Operational Objective:** Reducing truck roll volume and mission latency through SAR ground truth.")
 
 col_left, col_right = st.columns(2, gap="large")
 
 with col_left:
     current = render_profile("Current", {
         'gp':5, 'gh':160, 'au':4, 'ah':40, 'ar':5500.0, 
-        'staff':650, 'days':9, 'hcv':80, 'std':200, 'aborts':45
+        'staff':650, 'days':9, 'rolls': 80, 'hcv_per': 2, 'std_per': 5, 'aborts': 35
     }, "grey")
 
 with col_right:
     targeted = render_profile("ICEYE", {
         'gp':2, 'gh':30, 'au':1, 'ah':10, 'ar':5500.0, 
-        'staff':300, 'days':4, 'hcv':30, 'std':100, 'aborts':5
+        'staff':300, 'days':4, 'rolls': 25, 'hcv_per': 1, 'std_per': 2, 'aborts': 2
     }, "blue")
 
 # =========================================================
@@ -185,7 +187,7 @@ with m1:
 with m2:
     st.metric("ANNUAL NET DIVIDEND", f"{sym}{net_annual:,.0f}", delta=f"{roi_pct:.0f}% ROI")
 with m3:
-    st.metric("OPERATIONAL EFFICIENCY", f"{current['days'] - targeted['days']} Days Saved")
+    st.metric("ROLL REDUCTION", f"{current['rolls'] - targeted['rolls']} Fewer Rolls")
 
 # Visual Chart
 fig = go.Figure()
@@ -200,7 +202,7 @@ fig.update_layout(
 st.plotly_chart(fig, use_container_width=True)
 
 # =========================================================
-# RESTORED: PRODUCT LOGIC BOX
+# PRODUCT LOGIC BOX
 # =========================================================
 st.markdown(f"""
 <div class="logic-container">
