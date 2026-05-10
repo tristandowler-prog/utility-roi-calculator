@@ -10,8 +10,8 @@ st.set_page_config(
     layout="wide"
 )
 
-# Reliable branding - Using a standard clear PNG
-LOGO_URL = "https://www.iceye.com/hubfs/iceye-logo-white.svg"
+# Reliable branding link
+LOGO_URL = "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/ICEYE_logo.svg/512px-ICEYE_logo.svg.png"
 
 # Refined Professional Theme
 BG, CARD, BORDER, TEXT, MUTED = "#0B1220", "#111827", "#1E293B", "#F8FAFC", "#94A3B8"
@@ -57,6 +57,14 @@ st.markdown(f"""
         display: block;
         margin-top: 5px;
     }}
+
+    .logic-container {{
+        background: linear-gradient(145deg, #111827, #1e293b);
+        border: 1px solid {BORDER};
+        padding: 2.5rem;
+        border-radius: 20px;
+        margin-top: 4rem;
+    }}
 </style>
 """, unsafe_allow_html=True)
 
@@ -64,7 +72,11 @@ st.markdown(f"""
 # SIDEBAR & GLOBAL CONTROLS
 # =========================================================
 with st.sidebar:
-    st.image(LOGO_URL, width=180)
+    try:
+        st.image(LOGO_URL, width=160)
+    except:
+        st.markdown("### ICEYE")
+    
     st.markdown("### Modeller Controls")
     currency = st.selectbox("Currency", ["AUD", "USD", "EUR", "GBP"])
     sym = {"AUD": "$", "USD": "$", "EUR": "€", "GBP": "£"}[currency]
@@ -74,10 +86,10 @@ with st.sidebar:
     annual_events = st.slider("Annual Major Flood Events", 1, 10, 3)
     
     st.divider()
-    st.subheader("Global Mobilisation")
-    st.caption("Toggle this for interstate deployments or major regional activations requiring external task-forces.")
+    st.subheader("Mobilisation Logistics")
+    st.caption("One-off costs for regional transport/activation (typically Current state only).")
     include_mob = st.toggle("Include Mobilisation Costs", value=False)
-    mob_fee = st.number_input(f"One-off Mobilisation Cost ({sym})", value=125000.0) if include_mob else 0
+    mob_fee = st.number_input(f"Mobilisation Fee ({sym})", value=125000.0) if include_mob else 0
 
 # =========================================================
 # OPERATIONAL PILLAR ENGINE
@@ -89,36 +101,35 @@ def render_profile(prefix, defaults, color):
     st.markdown('<div class="section-header">Intelligence & GIS Cell</div>', unsafe_allow_html=True)
     c1, c2, c3 = st.columns(3)
     gp = c1.number_input(f"{prefix} Analysts", value=defaults['gp'], key=f"{prefix}_gp")
-    gh = c2.number_input(f"{prefix} Hours", value=defaults['gh'], key=f"{prefix}_gh")
-    gr = c3.number_input(f"{prefix} $/hr", value=95.0, key=f"{prefix}_gr")
+    gh = c2.number_input(f"{prefix} Total Hours", value=defaults['gh'], key=f"{prefix}_gh")
+    gr = c3.number_input(f"{prefix} Hourly Rate", value=95.0, key=f"{prefix}_gr")
     intel_val = gp * gh * gr
-    st.markdown(f"<div class='formula-tag'>Subtotal: {sym}{intel_val:,.0f}</div>", unsafe_allow_html=True)
+    st.markdown(f"<div class='formula-tag'>Intel Total: {sym}{intel_val:,.0f}</div>", unsafe_allow_html=True)
 
     # 2. AERIAL RECON
     st.markdown('<div class="section-header">Aerial Observation</div>', unsafe_allow_html=True)
     c1, c2, c3 = st.columns(3)
     au = c1.number_input(f"{prefix} Aircraft", value=defaults['au'], key=f"{prefix}_au")
-    ah = c2.number_input(f"{prefix} Flight Hrs", value=defaults['ah'], key=f"{prefix}_ah")
-    ar = c3.number_input(f"{prefix} Rate/Hr", value=defaults['ar'], key=f"{prefix}_ar")
+    ah = c2.number_input(f"{prefix} Flight Hrs/Unit", value=defaults['ah'], key=f"{prefix}_ah")
+    ar = c3.number_input(f"{prefix} Air Rate/Hr", value=defaults['ar'], key=f"{prefix}_ar")
     air_val = au * ah * ar
-    st.markdown(f"<div class='formula-tag'>Subtotal: {sym}{air_val:,.0f}</div>", unsafe_allow_html=True)
+    st.markdown(f"<div class='formula-tag'>Aerial Total: {sym}{air_val:,.0f}</div>", unsafe_allow_html=True)
 
     # 3. FIELD OPERATIONS
     st.markdown('<div class="section-header">Field Crews & Subsistence</div>', unsafe_allow_html=True)
     c1, c2 = st.columns(2)
     staff = c1.number_input(f"{prefix} Personnel", value=defaults['staff'], key=f"{prefix}_st")
-    days = c2.number_input(f"{prefix} Days", value=defaults['days'], key=f"{prefix}_ds")
+    days = c2.number_input(f"{prefix} Deployment Days", value=defaults['days'], key=f"{prefix}_ds")
     
     c3, c4 = st.columns(2)
-    f_wage = c3.number_input(f"{prefix} Wage $/hr", value=48.0, key=f"{prefix}_fw")
+    f_wage = c3.number_input(f"{prefix} Op Wage ($/hr)", value=48.0, key=f"{prefix}_fw")
     f_diet = c4.number_input(f"{prefix} Subsistence/Day", value=165.0, key=f"{prefix}_fd")
     
     field_val = (staff * (days * 12) * f_wage) + (staff * days * f_diet)
-    st.markdown(f"<div class='formula-tag'>Subtotal: {sym}{field_val:,.0f}</div>", unsafe_allow_html=True)
+    st.markdown(f"<div class='formula-tag'>Field Total: {sym}{field_val:,.0f}</div>", unsafe_allow_html=True)
 
-    # 4. FLEET - EVERY COMPONENT EDITABLE
+    # 4. GROUND FLEET - EVERY UNIT EDITABLE
     st.markdown('<div class="section-header">Ground Fleet & Logistics</div>', unsafe_allow_html=True)
-    
     f1, f2 = st.columns(2)
     hcv_units = f1.number_input(f"{prefix} HCV Units", value=defaults['hcv'], key=f"{prefix}_hcv")
     hcv_roll = f2.number_input(f"{prefix} HCV Roll Cost", value=defaults.get('hcv_r', 850.0), key=f"{prefix}_hcv_r")
@@ -129,14 +140,13 @@ def render_profile(prefix, defaults, color):
     
     st.markdown('<div style="font-size:0.8rem; color:#94A3B8; margin-top:10px;">Operational Inefficiency (Aborted Rolls/Turnarounds)</div>', unsafe_allow_html=True)
     f5, f6 = st.columns(2)
-    abort_units = f5.number_input(f"{prefix} Aborted Rolls", value=defaults.get('aborts', 40), key=f"{prefix}_abt")
-    abort_cost = f6.number_input(f"{prefix} Cost/Abort", value=550.0, key=f"{prefix}_abt_c")
+    abort_units = f5.number_input(f"{prefix} Aborted Missions", value=defaults.get('aborts', 40), key=f"{prefix}_abt")
+    abort_cost = f6.number_input(f"{prefix} Sunk Cost/Abort", value=550.0, key=f"{prefix}_abt_c")
     
     fleet_val = (hcv_units * hcv_roll) + (std_units * std_roll) + (abort_units * abort_cost)
     st.markdown(f"<div class='formula-tag'>Fleet Total: {sym}{fleet_val:,.0f}</div>", unsafe_allow_html=True)
 
     # SUMMATION
-    # Add mobilisation fee only to the "Current" profile if toggled
     final_mob = mob_fee if (prefix == "Current" and include_mob) else 0
     total = intel_val + air_val + field_val + fleet_val + final_mob
     return {"total": total, "intel": intel_val, "air": air_val, "field": field_val, "fleet": fleet_val, "days": days, "staff": staff}
@@ -144,23 +154,21 @@ def render_profile(prefix, defaults, color):
 # =========================================================
 # MAIN DASHBOARD
 # =========================================================
-st.markdown('<h1 style="color:white; margin-top:-50px;">ICEYE Subscription ROI: Precision Response Modeller</h1>', unsafe_allow_html=True)
-st.markdown(f"**Operational Objective:** Quantifying the reduction in mission latency and 'Sunk Cost' deployments using SAR ground truth.")
+st.markdown('<h1 style="color:white; margin-top:-30px;">ICEYE Subscription ROI: Precision Response Modeller</h1>', unsafe_allow_html=True)
+st.markdown(f"**Strategic Assessment:** Transitioning from *Wide-Area Search* to *Targeted Response* using SAR Ground Truth.")
 
 col_left, col_right = st.columns(2, gap="large")
 
 with col_left:
     current = render_profile("Current", {
         'gp':5, 'gh':160, 'au':4, 'ah':40, 'ar':5500.0, 
-        'staff':650, 'days':9, 'hcv':80, 'hcv_r':850.0, 
-        'std':200, 'std_r':450.0, 'aborts':45
+        'staff':650, 'days':9, 'hcv':80, 'std':200, 'aborts':45
     }, "grey")
 
 with col_right:
     targeted = render_profile("ICEYE", {
         'gp':2, 'gh':30, 'au':1, 'ah':10, 'ar':5500.0, 
-        'staff':300, 'days':4, 'hcv':30, 'hcv_r':850.0, 
-        'std':100, 'std_r':450.0, 'aborts':5
+        'staff':300, 'days':4, 'hcv':30, 'std':100, 'aborts':5
     }, "blue")
 
 # =========================================================
@@ -177,20 +185,43 @@ with m1:
 with m2:
     st.metric("ANNUAL NET DIVIDEND", f"{sym}{net_annual:,.0f}", delta=f"{roi_pct:.0f}% ROI")
 with m3:
-    st.metric("EFFICIENCY GAIN", f"{current['days'] - targeted['days']} Days Saved")
+    st.metric("OPERATIONAL EFFICIENCY", f"{current['days'] - targeted['days']} Days Saved")
 
 # Visual Chart
 fig = go.Figure()
 cats = ['Intel Cell', 'Aerial Recon', 'Field Ops', 'Ground Fleet']
-fig.add_trace(go.Bar(name='Current (Broad Search)', x=cats, y=[current['intel'], current['air'], current['field'], current['fleet']], marker_color='#334155'))
-fig.add_trace(go.Bar(name='ICEYE (Targeted)', x=cats, y=[targeted['intel'], targeted['air'], targeted['field'], targeted['fleet']], marker_color=PRIMARY))
+fig.add_trace(go.Bar(name='Current (Search)', x=cats, y=[current['intel'], current['air'], current['field'], current['fleet']], marker_color='#334155'))
+fig.add_trace(go.Bar(name='ICEYE (Precision)', x=cats, y=[targeted['intel'], targeted['air'], targeted['field'], targeted['fleet']], marker_color=PRIMARY))
 fig.update_layout(
-    barmode='group', 
-    height=400, 
-    paper_bgcolor='rgba(0,0,0,0)', 
-    plot_bgcolor='rgba(0,0,0,0)', 
-    font=dict(color=TEXT), 
-    margin=dict(t=20),
+    barmode='group', height=400, paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', 
+    font=dict(color=TEXT), margin=dict(t=20),
     legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
 )
 st.plotly_chart(fig, use_container_width=True)
+
+# =========================================================
+# RESTORED: PRODUCT LOGIC BOX
+# =========================================================
+st.markdown(f"""
+<div class="logic-container">
+    <h2 style="margin-top:0; font-weight:700;">▲ Operational Intelligence Logic</h2>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-top: 20px;">
+        <div>
+            <h4 style="color:{PRIMARY}; margin-bottom:10px;">Flood Rapid Intelligence (6h)</h4>
+            <p style="font-size:0.95rem; line-height:1.6; color:{MUTED};">
+                By utilising the world's largest SAR constellation, ICEYE provides 6-hourly <b>flood extent</b> updates. 
+                This allows the GIS Intel Cell to track the "leading edge" of floodwaters through cloud and night, 
+                eliminating the need for continuous wide-area aerial recon flights.
+            </p>
+        </div>
+        <div>
+            <h4 style="color:{SUCCESS}; margin-bottom:10px;">Flood Insights (24h)</h4>
+            <p style="font-size:0.95rem; line-height:1.6; color:{MUTED};">
+                <b>Flood Insights</b> provides building-level <b>flood depth</b>. This is the primary driver for 
+                <b>Asset Matching</b>: Command can identify exact road-over-topping depths, ensuring standard vehicles 
+                don't roll into impassable zones. This directly reduces "Aborted Missions" and high-value asset damage.
+            </p>
+        </div>
+    </div>
+</div>
+""", unsafe_allow_html=True)
