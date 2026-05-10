@@ -10,21 +10,12 @@ st.set_page_config(
     layout="wide"
 )
 
-# Reliable Logo Link - Using a high-res PNG for better compatibility
-LOGO_URL = "https://images.squarespace-cdn.com/content/v1/598075306a49630656a81635/1585566085116-DRXW7C7C5Y9U154G2W3R/ICEYE_Logo_White.png"
-
-# This puts it in the sidebar/top-left area
-st.logo(LOGO_URL, size="large")
-
-# Fallback: If st.logo acts up in your specific environment, 
-# this ensures the logo appears at the top of the sidebar.
-with st.sidebar:
-    st.image(LOGO_URL, use_container_width=True)
-    st.markdown("---")
-
 # Refined Professional Theme
 BG, CARD, BORDER, TEXT, MUTED = "#0B1220", "#111827", "#1E293B", "#F8FAFC", "#94A3B8"
 PRIMARY, SUCCESS, WARNING, ACCENT = "#38BDF8", "#22C55E", "#F59E0B", "#6366F1"
+
+# LOGO LOGIC - Using an alternative reliable source
+LOGO_URL = "https://cdn.intelligencecommunitynews.com/wp-content/uploads/2018/01/ICEYE-logo.png"
 
 st.markdown(f"""
 <style>
@@ -36,27 +27,18 @@ st.markdown(f"""
         font-family: 'Inter', sans-serif; 
     }}
     
-    /* Side Bar Styling */
-    section[data-testid="stSidebar"] {{
-        background-color: {CARD};
-        border-right: 1px solid {BORDER};
-    }}
-
     .metric-card {{
         background: {CARD};
         border: 1px solid {BORDER};
         padding: 1.5rem;
         border-radius: 16px;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
     }}
     
     .main-title {{
-        font-size: 2.5rem;
+        font-size: 2.2rem;
         font-weight: 700;
         letter-spacing: -0.02em;
-        background: linear-gradient(90deg, #FFFFFF, {PRIMARY});
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
+        color: white;
         margin-bottom: 0.5rem;
     }}
     
@@ -102,8 +84,13 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 # =========================================================
-# SIDEBAR - COMMAND CENTRE
+# HEADER & SIDEBAR
 # =========================================================
+# Top-left Branding
+t1, t2 = st.columns([1, 4])
+with t1:
+    st.image(LOGO_URL, width=150)
+
 with st.sidebar:
     st.markdown("### Modeller Controls")
     currency = st.selectbox("Currency", ["AUD", "USD", "EUR", "GBP"])
@@ -115,7 +102,6 @@ with st.sidebar:
     
     st.divider()
     st.subheader("Mobilisation Logistics")
-    st.caption("Costs for regional transport, BoO setup, and fleet logistics.")
     mutual_aid = st.checkbox("Include Mobilisation Costs", value=True)
     aid_fee = st.number_input("Mobilisation Flat-Fee", value=125000.0) if mutual_aid else 0
 
@@ -125,6 +111,7 @@ with st.sidebar:
 def render_profile(prefix, defaults, color):
     st.markdown(f"## :{color}[{prefix.upper()} PROFILE]")
     
+    # 1. INTEL
     st.markdown('<div class="section-header">Intelligence & GIS Cell</div>', unsafe_allow_html=True)
     c1, c2, c3 = st.columns(3)
     gp = c1.number_input("Analysts", value=defaults['gp'], key=f"{prefix}_gp")
@@ -133,6 +120,7 @@ def render_profile(prefix, defaults, color):
     intel_val = gp * gh * gr
     st.markdown(f"<div class='formula-tag'>{gp}p × {gh}hrs × {sym}{gr} = {sym}{intel_val:,.0f}</div>", unsafe_allow_html=True)
 
+    # 2. AERIAL
     st.markdown('<div class="section-header">Aerial Observation</div>', unsafe_allow_html=True)
     c1, c2, c3 = st.columns(3)
     au = c1.number_input("Aircraft", value=defaults['au'], key=f"{prefix}_au")
@@ -141,6 +129,7 @@ def render_profile(prefix, defaults, color):
     air_val = au * ah * ar
     st.markdown(f"<div class='formula-tag'>{au}u × {ah}hrs × {sym}{ar:,.0f} = {sym}{air_val:,.0f}</div>", unsafe_allow_html=True)
 
+    # 3. FIELD
     st.markdown('<div class="section-header">Field Operations & Subsistence</div>', unsafe_allow_html=True)
     c1, c2 = st.columns(2)
     staff = c1.number_input("Field Personnel", value=defaults['staff'], key=f"{prefix}_st")
@@ -153,13 +142,18 @@ def render_profile(prefix, defaults, color):
     field_val = (staff * (days * 12) * f_wage) + (staff * days * f_diet)
     st.markdown(f"<div class='formula-tag'>({staff}p × {days*12}h × {sym}{f_wage}) + ({staff}p × {days}d × {sym}{f_diet}) = {sym}{field_val:,.0f}</div>", unsafe_allow_html=True)
 
-    st.markdown('<div class="section-header">Ground Fleet</div>', unsafe_allow_html=True)
-    c1, c2, c3 = st.columns(3)
-    hcv = c1.number_input("HCV Units", value=defaults['hcv'], key=f"{prefix}_hcv")
-    std = c2.number_input("STD Units", value=defaults['std'], key=f"{prefix}_std")
-    roll = c3.number_input("Roll Cost ($)", value=defaults['roll'], key=f"{prefix}_rc")
-    fleet_val = (hcv + std) * roll
-    st.markdown(f"<div class='formula-tag'>{hcv+std} vehicles × {sym}{roll} = {sym}{fleet_val:,.0f}</div>", unsafe_allow_html=True)
+    # 4. GROUND FLEET - GRANULAR EDITABLE FIELDS
+    st.markdown('<div class="section-header">Ground Fleet (HCV & STD)</div>', unsafe_allow_html=True)
+    f1, f2 = st.columns(2)
+    hcv = f1.number_input("HCV Units", value=defaults['hcv'], key=f"{prefix}_hcv")
+    hcv_cost = f2.number_input("HCV Roll Cost ($)", value=defaults.get('hcv_c', 850.0), key=f"{prefix}_hcvc")
+    
+    f3, f4 = st.columns(2)
+    std = f3.number_input("STD Units", value=defaults['std'], key=f"{prefix}_std")
+    std_cost = f4.number_input("STD Roll Cost ($)", value=defaults.get('std_c', 450.0), key=f"{prefix}_stdc")
+    
+    fleet_val = (hcv * hcv_cost) + (std * std_cost)
+    st.markdown(f"<div class='formula-tag'>({hcv} HCV × {sym}{hcv_cost}) + ({std} STD × {sym}{std_cost}) = {sym}{fleet_val:,.0f}</div>", unsafe_allow_html=True)
 
     total = intel_val + air_val + field_val + fleet_val + (aid_fee if prefix == "Current" else 0)
     return {"total": total, "intel": intel_val, "air": air_val, "field": field_val, "fleet": fleet_val, "days": days, "staff": staff}
@@ -173,13 +167,13 @@ st.markdown(f"**Strategic Assessment:** Transitioning from *Wide-Area Search* to
 col_left, col_right = st.columns(2, gap="large")
 
 with col_left:
-    current = render_profile("Current", {'gp':5, 'gh':160, 'au':4, 'ah':40, 'ar':5500.0, 'staff':650, 'days':9, 'hcv':80, 'std':200, 'roll':550.0}, "grey")
+    current = render_profile("Current", {'gp':5, 'gh':160, 'au':4, 'ah':40, 'ar':5500.0, 'staff':650, 'days':9, 'hcv':80, 'hcv_c':850.0, 'std':200, 'std_c':450.0}, "grey")
 
 with col_right:
-    targeted = render_profile("ICEYE", {'gp':2, 'gh':30, 'au':1, 'ah':10, 'ar':5500.0, 'staff':300, 'days':4, 'hcv':30, 'std':100, 'roll':550.0}, "blue")
+    targeted = render_profile("ICEYE", {'gp':2, 'gh':30, 'au':1, 'ah':10, 'ar':5500.0, 'staff':300, 'days':4, 'hcv':30, 'hcv_c':850.0, 'std':100, 'std_c':450.0}, "blue")
 
 # =========================================================
-# ANALYTICS DASHBOARD
+# RESULTS & ANALYTICS
 # =========================================================
 st.divider()
 ev_savings = current['total'] - targeted['total']
