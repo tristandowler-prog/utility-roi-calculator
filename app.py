@@ -10,7 +10,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# Reliable branding
+# Reliable branding - Using a standard clear PNG
 LOGO_URL = "https://www.iceye.com/hubfs/iceye-logo-white.svg"
 
 # Refined Professional Theme
@@ -48,11 +48,11 @@ st.markdown(f"""
 
     .formula-tag {{
         font-family: 'JetBrains Mono', monospace;
-        font-size: 0.7rem;
+        font-size: 0.75rem;
         color: {MUTED};
-        background: rgba(255, 255, 255, 0.03);
-        padding: 6px 10px;
-        border-radius: 6px;
+        background: rgba(255, 255, 255, 0.05);
+        padding: 8px 12px;
+        border-radius: 8px;
         border: 1px solid {BORDER};
         display: block;
         margin-top: 5px;
@@ -61,12 +61,12 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 # =========================================================
-# SIDEBAR & BRANDING
+# SIDEBAR & GLOBAL CONTROLS
 # =========================================================
 with st.sidebar:
     st.image(LOGO_URL, width=180)
     st.markdown("### Modeller Controls")
-    currency = st.selectbox("Reporting Currency", ["AUD", "USD", "EUR", "GBP"])
+    currency = st.selectbox("Currency", ["AUD", "USD", "EUR", "GBP"])
     sym = {"AUD": "$", "USD": "$", "EUR": "€", "GBP": "£"}[currency]
     
     st.divider()
@@ -75,8 +75,9 @@ with st.sidebar:
     
     st.divider()
     st.subheader("Global Mobilisation")
-    st.caption("One-off logistics for regional task-force activation.")
-    aid_fee = st.number_input(f"Mobilisation Cost ({sym})", value=125000.0)
+    st.caption("Toggle this for interstate deployments or major regional activations requiring external task-forces.")
+    include_mob = st.toggle("Include Mobilisation Costs", value=False)
+    mob_fee = st.number_input(f"One-off Mobilisation Cost ({sym})", value=125000.0) if include_mob else 0
 
 # =========================================================
 # OPERATIONAL PILLAR ENGINE
@@ -87,73 +88,80 @@ def render_profile(prefix, defaults, color):
     # 1. INTEL CELL
     st.markdown('<div class="section-header">Intelligence & GIS Cell</div>', unsafe_allow_html=True)
     c1, c2, c3 = st.columns(3)
-    gp = c1.number_input("Personnel", value=defaults['gp'], key=f"{prefix}_gp")
-    gh = c2.number_input("Total Hours", value=defaults['gh'], key=f"{prefix}_gh")
-    gr = c3.number_input("Hourly Rate", value=95.0, key=f"{prefix}_gr")
+    gp = c1.number_input(f"{prefix} Analysts", value=defaults['gp'], key=f"{prefix}_gp")
+    gh = c2.number_input(f"{prefix} Hours", value=defaults['gh'], key=f"{prefix}_gh")
+    gr = c3.number_input(f"{prefix} $/hr", value=95.0, key=f"{prefix}_gr")
     intel_val = gp * gh * gr
-    st.markdown(f"<div class='formula-tag'>Total: {sym}{intel_val:,.0f}</div>", unsafe_allow_html=True)
+    st.markdown(f"<div class='formula-tag'>Subtotal: {sym}{intel_val:,.0f}</div>", unsafe_allow_html=True)
 
     # 2. AERIAL RECON
     st.markdown('<div class="section-header">Aerial Observation</div>', unsafe_allow_html=True)
     c1, c2, c3 = st.columns(3)
-    au = c1.number_input("Total Aircraft", value=defaults['au'], key=f"{prefix}_au")
-    ah = c2.number_input("Flight Hours", value=defaults['ah'], key=f"{prefix}_ah")
-    ar = c3.number_input("Dry Rate/Hr", value=defaults['ar'], key=f"{prefix}_ar")
+    au = c1.number_input(f"{prefix} Aircraft", value=defaults['au'], key=f"{prefix}_au")
+    ah = c2.number_input(f"{prefix} Flight Hrs", value=defaults['ah'], key=f"{prefix}_ah")
+    ar = c3.number_input(f"{prefix} Rate/Hr", value=defaults['ar'], key=f"{prefix}_ar")
     air_val = au * ah * ar
-    st.markdown(f"<div class='formula-tag'>Total: {sym}{air_val:,.0f}</div>", unsafe_allow_html=True)
+    st.markdown(f"<div class='formula-tag'>Subtotal: {sym}{air_val:,.0f}</div>", unsafe_allow_html=True)
 
     # 3. FIELD OPERATIONS
     st.markdown('<div class="section-header">Field Crews & Subsistence</div>', unsafe_allow_html=True)
     c1, c2 = st.columns(2)
-    staff = c1.number_input("Field Personnel", value=defaults['staff'], key=f"{prefix}_st")
-    days = c2.number_input("Deployment Days", value=defaults['days'], key=f"{prefix}_ds")
+    staff = c1.number_input(f"{prefix} Personnel", value=defaults['staff'], key=f"{prefix}_st")
+    days = c2.number_input(f"{prefix} Days", value=defaults['days'], key=f"{prefix}_ds")
     
     c3, c4 = st.columns(2)
-    f_wage = c3.number_input("Op Rate ($/hr)", value=48.0, key=f"{prefix}_fw")
-    f_diet = c4.number_input("Daily Subsistence", value=165.0, key=f"{prefix}_fd")
+    f_wage = c3.number_input(f"{prefix} Wage $/hr", value=48.0, key=f"{prefix}_fw")
+    f_diet = c4.number_input(f"{prefix} Subsistence/Day", value=165.0, key=f"{prefix}_fd")
     
     field_val = (staff * (days * 12) * f_wage) + (staff * days * f_diet)
-    st.markdown(f"<div class='formula-tag'>Total: {sym}{field_val:,.0f}</div>", unsafe_allow_html=True)
+    st.markdown(f"<div class='formula-tag'>Subtotal: {sym}{field_val:,.0f}</div>", unsafe_allow_html=True)
 
-    # 4. FLEET - INDIVIDUAL EDITABLE UNITS & TURNAROUNDS
+    # 4. FLEET - EVERY COMPONENT EDITABLE
     st.markdown('<div class="section-header">Ground Fleet & Logistics</div>', unsafe_allow_html=True)
     
-    # HCV SECTION
     f1, f2 = st.columns(2)
-    hcv_units = f1.number_input("HCV Units Deployed", value=defaults['hcv'], key=f"{prefix}_hcv")
-    hcv_roll = f2.number_input("HCV Unit Roll Cost", value=850.0, key=f"{prefix}_hcv_r")
+    hcv_units = f1.number_input(f"{prefix} HCV Units", value=defaults['hcv'], key=f"{prefix}_hcv")
+    hcv_roll = f2.number_input(f"{prefix} HCV Roll Cost", value=defaults.get('hcv_r', 850.0), key=f"{prefix}_hcv_r")
     
-    # STD SECTION
     f3, f4 = st.columns(2)
-    std_units = f3.number_input("STD Units Deployed", value=defaults['std'], key=f"{prefix}_std")
-    std_roll = f4.number_input("STD Unit Roll Cost", value=450.0, key=f"{prefix}_std_r")
+    std_units = f3.number_input(f"{prefix} STD Units", value=defaults['std'], key=f"{prefix}_std")
+    std_roll = f4.number_input(f"{prefix} STD Roll Cost", value=defaults.get('std_r', 450.0), key=f"{prefix}_std_r")
     
-    # THE "TURNAROUND" SECTION
-    st.markdown('<div style="font-size:0.8rem; color:#94A3B8; margin-top:10px;">Turnaround Logistics (Incomplete Missions)</div>', unsafe_allow_html=True)
+    st.markdown('<div style="font-size:0.8rem; color:#94A3B8; margin-top:10px;">Operational Inefficiency (Aborted Rolls/Turnarounds)</div>', unsafe_allow_html=True)
     f5, f6 = st.columns(2)
-    abort_units = f5.number_input("Aborted Truck Rolls", value=defaults.get('aborts', 40 if prefix == "Current" else 5), key=f"{prefix}_abt")
-    abort_cost = f6.number_input("Sunk Cost Per Abort", value=550.0, key=f"{prefix}_abt_c", help="Fuel, time, and repositioning costs.")
+    abort_units = f5.number_input(f"{prefix} Aborted Rolls", value=defaults.get('aborts', 40), key=f"{prefix}_abt")
+    abort_cost = f6.number_input(f"{prefix} Cost/Abort", value=550.0, key=f"{prefix}_abt_c")
     
     fleet_val = (hcv_units * hcv_roll) + (std_units * std_roll) + (abort_units * abort_cost)
-    st.markdown(f"<div class='formula-tag'>Total Fleet: {sym}{fleet_val:,.0f}</div>", unsafe_allow_html=True)
+    st.markdown(f"<div class='formula-tag'>Fleet Total: {sym}{fleet_val:,.0f}</div>", unsafe_allow_html=True)
 
     # SUMMATION
-    total = intel_val + air_val + field_val + fleet_val + (aid_fee if prefix == "Current" else 0)
+    # Add mobilisation fee only to the "Current" profile if toggled
+    final_mob = mob_fee if (prefix == "Current" and include_mob) else 0
+    total = intel_val + air_val + field_val + fleet_val + final_mob
     return {"total": total, "intel": intel_val, "air": air_val, "field": field_val, "fleet": fleet_val, "days": days, "staff": staff}
 
 # =========================================================
 # MAIN DASHBOARD
 # =========================================================
-st.markdown('<h1 style="color:white;">ICEYE Subscription ROI: Precision Response Modeller</h1>', unsafe_allow_html=True)
-st.markdown(f"**Operational Objective:** Reducing 'Sunk Cost' truck rolls and mission latency via SAR ground truth.")
+st.markdown('<h1 style="color:white; margin-top:-50px;">ICEYE Subscription ROI: Precision Response Modeller</h1>', unsafe_allow_html=True)
+st.markdown(f"**Operational Objective:** Quantifying the reduction in mission latency and 'Sunk Cost' deployments using SAR ground truth.")
 
 col_left, col_right = st.columns(2, gap="large")
 
 with col_left:
-    current = render_profile("Current", {'gp':5, 'gh':160, 'au':4, 'ah':40, 'ar':5500.0, 'staff':650, 'days':9, 'hcv':80, 'std':200, 'aborts':45}, "grey")
+    current = render_profile("Current", {
+        'gp':5, 'gh':160, 'au':4, 'ah':40, 'ar':5500.0, 
+        'staff':650, 'days':9, 'hcv':80, 'hcv_r':850.0, 
+        'std':200, 'std_r':450.0, 'aborts':45
+    }, "grey")
 
 with col_right:
-    targeted = render_profile("ICEYE", {'gp':2, 'gh':30, 'au':1, 'ah':10, 'ar':5500.0, 'staff':300, 'days':4, 'hcv':30, 'std':100, 'aborts':5}, "blue")
+    targeted = render_profile("ICEYE", {
+        'gp':2, 'gh':30, 'au':1, 'ah':10, 'ar':5500.0, 
+        'staff':300, 'days':4, 'hcv':30, 'hcv_r':850.0, 
+        'std':100, 'std_r':450.0, 'aborts':5
+    }, "blue")
 
 # =========================================================
 # ANALYTICS DASHBOARD
@@ -169,12 +177,20 @@ with m1:
 with m2:
     st.metric("ANNUAL NET DIVIDEND", f"{sym}{net_annual:,.0f}", delta=f"{roi_pct:.0f}% ROI")
 with m3:
-    st.metric("DAYS SAVED", f"{current['days'] - targeted['days']} Days")
+    st.metric("EFFICIENCY GAIN", f"{current['days'] - targeted['days']} Days Saved")
 
-# Comparison Chart
+# Visual Chart
 fig = go.Figure()
 cats = ['Intel Cell', 'Aerial Recon', 'Field Ops', 'Ground Fleet']
 fig.add_trace(go.Bar(name='Current (Broad Search)', x=cats, y=[current['intel'], current['air'], current['field'], current['fleet']], marker_color='#334155'))
 fig.add_trace(go.Bar(name='ICEYE (Targeted)', x=cats, y=[targeted['intel'], targeted['air'], targeted['field'], targeted['fleet']], marker_color=PRIMARY))
-fig.update_layout(barmode='group', height=400, paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color=TEXT), margin=dict(t=20))
+fig.update_layout(
+    barmode='group', 
+    height=400, 
+    paper_bgcolor='rgba(0,0,0,0)', 
+    plot_bgcolor='rgba(0,0,0,0)', 
+    font=dict(color=TEXT), 
+    margin=dict(t=20),
+    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+)
 st.plotly_chart(fig, use_container_width=True)
