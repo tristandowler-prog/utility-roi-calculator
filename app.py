@@ -92,24 +92,27 @@ def render_profile(prefix, defaults, color):
     
     # 1. INTEL CELL
     st.markdown('<div class="section-header">Intelligence & GIS Cell</div>', unsafe_allow_html=True)
+    intel_on = st.toggle(f"Include Intel Cell ({prefix})", value=True, key=f"{prefix}_intel_on")
     c1, c2, c3 = st.columns(3)
     gp = c1.number_input(f"{prefix} Analysts", value=defaults['gp'], key=f"{prefix}_gp")
     gh = c2.number_input(f"{prefix} Total Hours", value=defaults['gh'], key=f"{prefix}_gh")
     gr = c3.number_input(f"{prefix} Hourly Rate", value=95.0, key=f"{prefix}_gr")
-    intel_val = gp * gh * gr
+    intel_val = (gp * gh * gr) if intel_on else 0
     st.markdown(f"<div class='formula-tag'>Intel Total: {sym}{intel_val:,.0f}</div>", unsafe_allow_html=True)
 
     # 2. AERIAL RECON
     st.markdown('<div class="section-header">Aerial Observation</div>', unsafe_allow_html=True)
+    air_on = st.toggle(f"Include Aerial Recon ({prefix})", value=True, key=f"{prefix}_air_on")
     c1, c2, c3 = st.columns(3)
     au = c1.number_input(f"{prefix} Aircraft", value=defaults['au'], key=f"{prefix}_au")
     ah = c2.number_input(f"{prefix} Flight Hrs", value=defaults['ah'], key=f"{prefix}_ah")
     ar = c3.number_input(f"{prefix} Dry Rate/Hr", value=defaults['ar'], key=f"{prefix}_ar")
-    air_val = au * ah * ar
+    air_val = (au * ah * ar) if air_on else 0
     st.markdown(f"<div class='formula-tag'>Aerial Total: {sym}{air_val:,.0f}</div>", unsafe_allow_html=True)
 
     # 3. FIELD OPERATIONS
     st.markdown('<div class="section-header">Field Personnel</div>', unsafe_allow_html=True)
+    field_on = st.toggle(f"Include Field Ops ({prefix})", value=True, key=f"{prefix}_field_on")
     c1, c2 = st.columns(2)
     staff = c1.number_input(f"{prefix} Personnel Count", value=defaults['staff'], key=f"{prefix}_st")
     days = c2.number_input(f"{prefix} Deployment Days", value=defaults['days'], key=f"{prefix}_ds")
@@ -118,11 +121,12 @@ def render_profile(prefix, defaults, color):
     f_wage = c3.number_input(f"{prefix} Personnel Rate", value=48.0, key=f"{prefix}_fw")
     f_diet = c4.number_input(f"{prefix} Subsistence/Day", value=165.0, key=f"{prefix}_fd")
     
-    field_val = (staff * (days * 12) * f_wage) + (staff * days * f_diet)
+    field_val = ((staff * (days * 12) * f_wage) + (staff * days * f_diet)) if field_on else 0
     st.markdown(f"<div class='formula-tag'>Personnel Total: {sym}{field_val:,.0f}</div>", unsafe_allow_html=True)
 
     # 4. TRUCK ROLLS & FLEET (THE CORE SAVINGS LEVER)
     st.markdown('<div class="section-header">Truck Rolls & Fleet Logistics</div>', unsafe_allow_html=True)
+    fleet_on = st.toggle(f"Include Fleet Logistics ({prefix})", value=True, key=f"{prefix}_fleet_on")
     
     # The primary "Volume" field
     num_rolls = st.number_input(f"Total Number of Truck Rolls ({prefix})", value=defaults.get('rolls', 10), key=f"{prefix}_rolls")
@@ -142,9 +146,12 @@ def render_profile(prefix, defaults, color):
     abort_cost = f6.number_input(f"Sunk Cost/Abort", value=550.0, key=f"{prefix}_abt_c")
     
     # Calculation Logic
-    roll_ops = num_rolls * ((hcv_per_roll * hcv_cost) + (std_per_roll * std_cost))
-    abort_ops = abort_units * abort_cost
-    fleet_val = roll_ops + abort_ops
+    if fleet_on:
+        roll_ops = num_rolls * ((hcv_per_roll * hcv_cost) + (std_per_roll * std_cost))
+        abort_ops = abort_units * abort_cost
+        fleet_val = roll_ops + abort_ops
+    else:
+        fleet_val = 0
     
     st.markdown(f"<div class='formula-tag'>Fleet Total: {sym}{fleet_val:,.0f}</div>", unsafe_allow_html=True)
 
