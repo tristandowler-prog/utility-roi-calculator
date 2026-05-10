@@ -99,7 +99,7 @@ def render_profile(prefix, defaults, color):
     
     # 1. INTEL CELL
     st.markdown('<div class="section-header">Intelligence & GIS Cell</div>', unsafe_allow_html=True)
-    st.markdown('<div class="section-desc">GIS analysts processing data, satellite imagery, and creating situational awareness maps.</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-desc">Remote sensing and GIS analysis to determine flood extent and depth.</div>', unsafe_allow_html=True)
     intel_on = st.toggle(f"Enable Intel Cell ({prefix})", value=True, key=f"{prefix}_intel_t")
     
     c1, c2, c3 = st.columns(3)
@@ -112,7 +112,7 @@ def render_profile(prefix, defaults, color):
 
     # 2. AERIAL RECON
     st.markdown('<div class="section-header">Aerial Observation</div>', unsafe_allow_html=True)
-    st.markdown('<div class="section-desc">Fixed-wing or rotary aircraft used for visual scouting and flood extent mapping.</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-desc">Fixed-wing or rotary assets for visual scouting (Eliminated by SAR ground truth).</div>', unsafe_allow_html=True)
     air_on = st.toggle(f"Enable Aerial Recon ({prefix})", value=True, key=f"{prefix}_air_t")
     
     c1, c2, c3 = st.columns(3)
@@ -125,7 +125,7 @@ def render_profile(prefix, defaults, color):
 
     # 3. FIELD OPERATIONS
     st.markdown('<div class="section-header">Field Personnel</div>', unsafe_allow_html=True)
-    st.markdown('<div class="section-desc">Boots on the ground: Personnel wages and subsistence during active deployment.</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-desc">Deployment costs for boots on the ground (Wages + Subsistence).</div>', unsafe_allow_html=True)
     field_on = st.toggle(f"Enable Field Ops ({prefix})", value=True, key=f"{prefix}_field_t")
     
     c1, c2 = st.columns(2)
@@ -139,45 +139,46 @@ def render_profile(prefix, defaults, color):
     field_val = ((staff * (days * 12) * f_wage) + (staff * days * f_diet)) if field_on else 0
     st.markdown(f"<div class='formula-tag'>Personnel Total: {sym}{field_val:,.0f}</div>", unsafe_allow_html=True)
 
-    # 4. TRUCK ROLLS & FLEET
-    st.markdown('<div class="section-header">Truck Rolls & Fleet Logistics</div>', unsafe_allow_html=True)
-    st.markdown('<div class="section-desc">Vehicle deployment costs including High Clearance (HCV) and Light Vehicles (LV).</div>', unsafe_allow_html=True)
-    fleet_on = st.toggle(f"Enable Fleet Logistics ({prefix})", value=True, key=f"{prefix}_fleet_t")
+    # 4. TASKFORCE & ASSET LOGISTICS
+    st.markdown('<div class="section-header">Taskforce & Asset Logistics</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-desc">Total fleet movements based on Taskforce deployments and specific asset mix.</div>', unsafe_allow_html=True)
+    fleet_on = st.toggle(f"Enable Asset Logistics ({prefix})", value=True, key=f"{prefix}_fleet_t")
     
-    num_rolls = st.number_input(f"Total Number of Truck Rolls ({prefix})", value=defaults.get('rolls', 10), key=f"{prefix}_rolls")
+    # Frequency of Missions
+    num_missions = st.number_input(f"Total Taskforce Deployments ({prefix})", value=defaults.get('rolls', 10), key=f"{prefix}_missions")
     
     col_hcv, col_lv = st.columns(2)
     with col_hcv:
-        hcv_per_roll = st.number_input(f"HCVs per Roll", value=defaults.get('hcv_per', 2), key=f"{prefix}_hcv_p")
-        hcv_cost = st.number_input(f"HCV Roll Cost ({sym})", value=850.0, key=f"{prefix}_hcv_c")
+        hcv_per_tf = st.number_input(f"HCVs per Taskforce", value=defaults.get('hcv_per', 2), key=f"{prefix}_hcv_p")
+        hcv_cost = st.number_input(f"HCV Cost/Mission ({sym})", value=850.0, key=f"{prefix}_hcv_c")
     with col_lv:
-        lv_per_roll = st.number_input(f"LVs per Roll", value=defaults.get('lv_per', 4), key=f"{prefix}_lv_p")
-        lv_cost = st.number_input(f"LV Roll Cost ({sym})", value=450.0, key=f"{prefix}_lv_c")
+        lv_per_tf = st.number_input(f"LVs per Taskforce", value=defaults.get('lv_per', 4), key=f"{prefix}_lv_p")
+        lv_cost = st.number_input(f"LV Cost/Mission ({sym})", value=450.0, key=f"{prefix}_lv_c")
     
-    st.markdown('<div style="font-size:0.8rem; color:#94A3B8; margin-top:10px;">Operational Inefficiency (Aborted Rolls)</div>', unsafe_allow_html=True)
+    st.markdown('<div style="font-size:0.8rem; color:#F87171; font-weight:600; margin-top:10px;">Operational Washouts (Aborted Efforts)</div>', unsafe_allow_html=True)
     f5, f6 = st.columns(2)
-    abort_units = f5.number_input(f"Aborted Missions ({prefix})", value=defaults.get('aborts', 5), key=f"{prefix}_abt")
-    abort_cost = f6.number_input(f"Sunk Cost/Abort", value=550.0, key=f"{prefix}_abt_c")
+    abort_units = f5.number_input(f"Number of Aborted Missions ({prefix})", value=defaults.get('aborts', 5), key=f"{prefix}_abt")
+    abort_cost = f6.number_input(f"Sunk Cost per Abort", value=550.0, key=f"{prefix}_abt_c")
     
     if fleet_on:
-        roll_ops = num_rolls * ((hcv_per_roll * hcv_cost) + (lv_per_roll * lv_cost))
+        mission_ops = num_missions * ((hcv_per_tf * hcv_cost) + (lv_per_tf * lv_cost))
         abort_ops = abort_units * abort_cost
-        fleet_val = roll_ops + abort_ops
+        fleet_val = mission_ops + abort_ops
     else:
         fleet_val = 0
     
-    st.markdown(f"<div class='formula-tag'>Fleet Total: {sym}{fleet_val:,.0f}</div>", unsafe_allow_html=True)
+    st.markdown(f"<div class='formula-tag'>Logistics Total: {sym}{fleet_val:,.0f}</div>", unsafe_allow_html=True)
 
     # TOTAL SUMMATION
     final_mob = mob_fee if (prefix == "Current" and include_mob) else 0
     total = intel_val + air_val + field_val + fleet_val + final_mob
-    return {"total": total, "intel": intel_val, "air": air_val, "field": field_val, "fleet": fleet_val, "days": days, "rolls": num_rolls}
+    return {"total": total, "intel": intel_val, "air": air_val, "field": field_val, "fleet": fleet_val, "days": days, "missions": num_missions}
 
 # =========================================================
 # MAIN DASHBOARD
 # =========================================================
 st.markdown('<h1 style="color:white; margin-top:-30px;">ICEYE Subscription ROI: Precision Response Modeller</h1>', unsafe_allow_html=True)
-st.markdown(f"**Operational Objective:** Reducing truck roll volume and mission latency through SAR ground truth.")
+st.markdown(f"**Operational Objective:** Minimising taskforce washouts and asset risk through SAR ground truth.")
 
 col_left, col_right = st.columns(2, gap="large")
 
@@ -207,11 +208,11 @@ with m1:
 with m2:
     st.metric("ANNUAL NET DIVIDEND", f"{sym}{net_annual:,.0f}", delta=f"{roi_pct:.0f}% ROI")
 with m3:
-    st.metric("ROLL REDUCTION", f"{current['rolls'] - targeted['rolls']} Fewer Rolls")
+    st.metric("MISSION EFFICIENCY", f"{current['missions'] - targeted['missions']} Fewer Deployments")
 
 # Visual Chart
 fig = go.Figure()
-cats = ['Intel Cell', 'Aerial Recon', 'Field Ops', 'Ground Fleet']
+cats = ['Intel Cell', 'Aerial Recon', 'Field Ops', 'Logistics & Fleet']
 fig.add_trace(go.Bar(name='Current (Search)', x=cats, y=[current['intel'], current['air'], current['field'], current['fleet']], marker_color='#334155'))
 fig.add_trace(go.Bar(name='ICEYE (Precision)', x=cats, y=[targeted['intel'], targeted['air'], targeted['field'], targeted['fleet']], marker_color=PRIMARY))
 fig.update_layout(
@@ -241,7 +242,7 @@ st.markdown(f"""
             <p style="font-size:0.95rem; line-height:1.6; color:{MUTED};">
                 <b>Flood Insights</b> provides building-level <b>flood depth</b>. This is the primary driver for 
                 <b>Asset Matching</b>: Command can identify exact road-over-topping depths, ensuring light vehicles (LVs)
-                don't roll into impassable zones. This directly reduces "Aborted Missions" and fleet damage.
+                don't roll into impassable zones. This directly reduces <b>Operational Washouts</b> and asset damage.
             </p>
         </div>
     </div>
