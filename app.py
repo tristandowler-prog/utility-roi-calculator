@@ -30,7 +30,7 @@ st.markdown(f"""
         font-size: 0.75rem;
         font-weight: 700;
         color: {PRIMARY};
-        margin: 1.5rem 0 0.75rem 0;
+        margin: 1.5rem 0 0.25rem 0;
         display: flex;
         align-items: center;
     }}
@@ -41,6 +41,13 @@ st.markdown(f"""
         height: 1px;
         background: {BORDER};
         margin-left: 10px;
+    }}
+
+    .section-desc {{
+        font-size: 0.85rem;
+        color: {MUTED};
+        margin-bottom: 1rem;
+        line-height: 1.4;
     }}
 
     .formula-tag {{
@@ -92,27 +99,35 @@ def render_profile(prefix, defaults, color):
     
     # 1. INTEL CELL
     st.markdown('<div class="section-header">Intelligence & GIS Cell</div>', unsafe_allow_html=True)
-    intel_on = st.toggle(f"Include Intel Cell ({prefix})", value=True, key=f"{prefix}_intel_on")
+    st.markdown('<div class="section-desc">GIS analysts processing data, satellite imagery, and creating situational awareness maps.</div>', unsafe_allow_html=True)
+    intel_on = st.toggle(f"Enable Intel Cell ({prefix})", value=True, key=f"{prefix}_intel_t")
+    
     c1, c2, c3 = st.columns(3)
     gp = c1.number_input(f"{prefix} Analysts", value=defaults['gp'], key=f"{prefix}_gp")
     gh = c2.number_input(f"{prefix} Total Hours", value=defaults['gh'], key=f"{prefix}_gh")
     gr = c3.number_input(f"{prefix} Hourly Rate", value=95.0, key=f"{prefix}_gr")
+    
     intel_val = (gp * gh * gr) if intel_on else 0
     st.markdown(f"<div class='formula-tag'>Intel Total: {sym}{intel_val:,.0f}</div>", unsafe_allow_html=True)
 
     # 2. AERIAL RECON
     st.markdown('<div class="section-header">Aerial Observation</div>', unsafe_allow_html=True)
-    air_on = st.toggle(f"Include Aerial Recon ({prefix})", value=True, key=f"{prefix}_air_on")
+    st.markdown('<div class="section-desc">Fixed-wing or rotary aircraft used for visual scouting and flood extent mapping.</div>', unsafe_allow_html=True)
+    air_on = st.toggle(f"Enable Aerial Recon ({prefix})", value=True, key=f"{prefix}_air_t")
+    
     c1, c2, c3 = st.columns(3)
     au = c1.number_input(f"{prefix} Aircraft", value=defaults['au'], key=f"{prefix}_au")
     ah = c2.number_input(f"{prefix} Flight Hrs", value=defaults['ah'], key=f"{prefix}_ah")
     ar = c3.number_input(f"{prefix} Dry Rate/Hr", value=defaults['ar'], key=f"{prefix}_ar")
+    
     air_val = (au * ah * ar) if air_on else 0
     st.markdown(f"<div class='formula-tag'>Aerial Total: {sym}{air_val:,.0f}</div>", unsafe_allow_html=True)
 
     # 3. FIELD OPERATIONS
     st.markdown('<div class="section-header">Field Personnel</div>', unsafe_allow_html=True)
-    field_on = st.toggle(f"Include Field Ops ({prefix})", value=True, key=f"{prefix}_field_on")
+    st.markdown('<div class="section-desc">Boots on the ground: Personnel wages and subsistence during active deployment.</div>', unsafe_allow_html=True)
+    field_on = st.toggle(f"Enable Field Ops ({prefix})", value=True, key=f"{prefix}_field_t")
+    
     c1, c2 = st.columns(2)
     staff = c1.number_input(f"{prefix} Personnel Count", value=defaults['staff'], key=f"{prefix}_st")
     days = c2.number_input(f"{prefix} Deployment Days", value=defaults['days'], key=f"{prefix}_ds")
@@ -124,30 +139,28 @@ def render_profile(prefix, defaults, color):
     field_val = ((staff * (days * 12) * f_wage) + (staff * days * f_diet)) if field_on else 0
     st.markdown(f"<div class='formula-tag'>Personnel Total: {sym}{field_val:,.0f}</div>", unsafe_allow_html=True)
 
-    # 4. TRUCK ROLLS & FLEET (THE CORE SAVINGS LEVER)
+    # 4. TRUCK ROLLS & FLEET
     st.markdown('<div class="section-header">Truck Rolls & Fleet Logistics</div>', unsafe_allow_html=True)
-    fleet_on = st.toggle(f"Include Fleet Logistics ({prefix})", value=True, key=f"{prefix}_fleet_on")
+    st.markdown('<div class="section-desc">Vehicle deployment costs including High Clearance (HCV) and Light Vehicles (LV).</div>', unsafe_allow_html=True)
+    fleet_on = st.toggle(f"Enable Fleet Logistics ({prefix})", value=True, key=f"{prefix}_fleet_t")
     
-    # The primary "Volume" field
     num_rolls = st.number_input(f"Total Number of Truck Rolls ({prefix})", value=defaults.get('rolls', 10), key=f"{prefix}_rolls")
     
-    col_hcv, col_std = st.columns(2)
+    col_hcv, col_lv = st.columns(2)
     with col_hcv:
         hcv_per_roll = st.number_input(f"HCVs per Roll", value=defaults.get('hcv_per', 2), key=f"{prefix}_hcv_p")
         hcv_cost = st.number_input(f"HCV Roll Cost ({sym})", value=850.0, key=f"{prefix}_hcv_c")
-    with col_std:
-        std_per_roll = st.number_input(f"STDs per Roll", value=defaults.get('std_per', 4), key=f"{prefix}_std_p")
-        std_cost = st.number_input(f"STD Roll Cost ({sym})", value=450.0, key=f"{prefix}_std_c")
+    with col_lv:
+        lv_per_roll = st.number_input(f"LVs per Roll", value=defaults.get('lv_per', 4), key=f"{prefix}_lv_p")
+        lv_cost = st.number_input(f"LV Roll Cost ({sym})", value=450.0, key=f"{prefix}_lv_c")
     
-    # Aborted Missions
     st.markdown('<div style="font-size:0.8rem; color:#94A3B8; margin-top:10px;">Operational Inefficiency (Aborted Rolls)</div>', unsafe_allow_html=True)
     f5, f6 = st.columns(2)
     abort_units = f5.number_input(f"Aborted Missions ({prefix})", value=defaults.get('aborts', 5), key=f"{prefix}_abt")
     abort_cost = f6.number_input(f"Sunk Cost/Abort", value=550.0, key=f"{prefix}_abt_c")
     
-    # Calculation Logic
     if fleet_on:
-        roll_ops = num_rolls * ((hcv_per_roll * hcv_cost) + (std_per_roll * std_cost))
+        roll_ops = num_rolls * ((hcv_per_roll * hcv_cost) + (lv_per_roll * lv_cost))
         abort_ops = abort_units * abort_cost
         fleet_val = roll_ops + abort_ops
     else:
@@ -171,13 +184,13 @@ col_left, col_right = st.columns(2, gap="large")
 with col_left:
     current = render_profile("Current", {
         'gp':5, 'gh':160, 'au':4, 'ah':40, 'ar':5500.0, 
-        'staff':650, 'days':9, 'rolls': 80, 'hcv_per': 2, 'std_per': 5, 'aborts': 35
+        'staff':650, 'days':9, 'rolls': 80, 'hcv_per': 2, 'lv_per': 5, 'aborts': 35
     }, "grey")
 
 with col_right:
     targeted = render_profile("ICEYE", {
         'gp':2, 'gh':30, 'au':1, 'ah':10, 'ar':5500.0, 
-        'staff':300, 'days':4, 'rolls': 25, 'hcv_per': 1, 'std_per': 2, 'aborts': 2
+        'staff':300, 'days':4, 'rolls': 25, 'hcv_per': 1, 'lv_per': 2, 'aborts': 2
     }, "blue")
 
 # =========================================================
@@ -227,8 +240,8 @@ st.markdown(f"""
             <h4 style="color:{SUCCESS}; margin-bottom:10px;">Flood Insights (24h)</h4>
             <p style="font-size:0.95rem; line-height:1.6; color:{MUTED};">
                 <b>Flood Insights</b> provides building-level <b>flood depth</b>. This is the primary driver for 
-                <b>Asset Matching</b>: Command can identify exact road-over-topping depths, ensuring standard vehicles 
-                don't roll into impassable zones. This directly reduces "Aborted Missions" and high-value asset damage.
+                <b>Asset Matching</b>: Command can identify exact road-over-topping depths, ensuring light vehicles (LVs)
+                don't roll into impassable zones. This directly reduces "Aborted Missions" and fleet damage.
             </p>
         </div>
     </div>
