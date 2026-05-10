@@ -10,8 +10,17 @@ st.set_page_config(
     layout="wide"
 )
 
-# Render the ICEYE Logo in the top-left corner
-st.logo("https://www.iceye.com/hubfs/iceye-logo-white.svg", size="large")
+# Reliable Logo Link - Using a high-res PNG for better compatibility
+LOGO_URL = "https://images.squarespace-cdn.com/content/v1/598075306a49630656a81635/1585566085116-DRXW7C7C5Y9U154G2W3R/ICEYE_Logo_White.png"
+
+# This puts it in the sidebar/top-left area
+st.logo(LOGO_URL, size="large")
+
+# Fallback: If st.logo acts up in your specific environment, 
+# this ensures the logo appears at the top of the sidebar.
+with st.sidebar:
+    st.image(LOGO_URL, use_container_width=True)
+    st.markdown("---")
 
 # Refined Professional Theme
 BG, CARD, BORDER, TEXT, MUTED = "#0B1220", "#111827", "#1E293B", "#F8FAFC", "#94A3B8"
@@ -27,6 +36,12 @@ st.markdown(f"""
         font-family: 'Inter', sans-serif; 
     }}
     
+    /* Side Bar Styling */
+    section[data-testid="stSidebar"] {{
+        background-color: {CARD};
+        border-right: 1px solid {BORDER};
+    }}
+
     .metric-card {{
         background: {CARD};
         border: 1px solid {BORDER};
@@ -100,7 +115,7 @@ with st.sidebar:
     
     st.divider()
     st.subheader("Mobilisation Logistics")
-    st.caption("Costs for regional transport, BoO setup, and fleet logistics triggered when local capacity is exceeded.")
+    st.caption("Costs for regional transport, BoO setup, and fleet logistics.")
     mutual_aid = st.checkbox("Include Mobilisation Costs", value=True)
     aid_fee = st.number_input("Mobilisation Flat-Fee", value=125000.0) if mutual_aid else 0
 
@@ -108,7 +123,7 @@ with st.sidebar:
 # OPERATIONAL PILLAR ENGINE
 # =========================================================
 def render_profile(prefix, defaults, color):
-    st.markdown(f"## :{color}[{prefix.upper()}]")
+    st.markdown(f"## :{color}[{prefix.upper()} PROFILE]")
     
     st.markdown('<div class="section-header">Intelligence & GIS Cell</div>', unsafe_allow_html=True)
     c1, c2, c3 = st.columns(3)
@@ -135,7 +150,6 @@ def render_profile(prefix, defaults, color):
     f_wage = c3.number_input("Staff Op Rate ($/hr)", value=48.0, key=f"{prefix}_fw")
     f_diet = c4.number_input("Daily Meals/Hotel ($)", value=165.0, key=f"{prefix}_fd")
     
-    # 12hr operational shifts
     field_val = (staff * (days * 12) * f_wage) + (staff * days * f_diet)
     st.markdown(f"<div class='formula-tag'>({staff}p × {days*12}h × {sym}{f_wage}) + ({staff}p × {days}d × {sym}{f_diet}) = {sym}{field_val:,.0f}</div>", unsafe_allow_html=True)
 
@@ -170,7 +184,7 @@ with col_right:
 st.divider()
 ev_savings = current['total'] - targeted['total']
 net_annual = (ev_savings * annual_events) - sub_cost
-roi_pct = (net_annual / sub_cost) * 100
+roi_pct = (net_annual / sub_cost) * 100 if sub_cost > 0 else 0
 
 m1, m2, m3 = st.columns(3)
 with m1:
@@ -185,8 +199,8 @@ c1, c2 = st.columns([2, 1])
 with c1:
     fig = go.Figure()
     cats = ['Intel Cell', 'Aerial Recon', 'Field Ops', 'Ground Fleet']
-    fig.add_trace(go.Bar(name='Current (Broad Search)', x=cats, y=[current['intel'], current['air'], current['field'], current['fleet']], marker_color='#334155'))
-    fig.add_trace(go.Bar(name='ICEYE (Targeted Response)', x=cats, y=[targeted['intel'], targeted['air'], targeted['field'], targeted['fleet']], marker_color=PRIMARY))
+    fig.add_trace(go.Bar(name='Current (Search)', x=cats, y=[current['intel'], current['air'], current['field'], current['fleet']], marker_color='#334155'))
+    fig.add_trace(go.Bar(name='ICEYE (Precision)', x=cats, y=[targeted['intel'], targeted['air'], targeted['field'], targeted['fleet']], marker_color=PRIMARY))
     fig.update_layout(barmode='group', height=400, paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color=TEXT), margin=dict(t=20))
     st.plotly_chart(fig, use_container_width=True)
 
@@ -206,7 +220,7 @@ with c2:
     """, unsafe_allow_html=True)
 
 # =========================================================
-# THE PRODUCT LOGIC BOX
+# PRODUCT LOGIC BOX
 # =========================================================
 st.markdown(f"""
 <div class="logic-container">
@@ -217,7 +231,7 @@ st.markdown(f"""
             <p style="font-size:0.9rem; line-height:1.6; color:{MUTED};">
                 Utilising the world's largest SAR satellite constellation, ICEYE delivers 6-hourly <b>flood extent</b> updates. 
                 This allows the GIS Intel Cell to track the "leading edge" of floodwaters in near real-time, identifying 
-                community isolation risks and evacuation route viability through clouds and at night.
+                community isolation risks through clouds and at night.
             </p>
         </div>
         <div>
